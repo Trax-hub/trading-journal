@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABS Trading Dashboard - Sheet Compatible</title>
+    <title>ABS Manager - Carousel & Full Data</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,13 +27,20 @@
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
         .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .modal-backdrop { background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(4px); }
+        .modal-backdrop { background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        input[type=range] { -webkit-appearance: none; background: transparent; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: #3b82f6; margin-top: -6px; cursor: pointer; }
-        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #334155; border-radius: 2px; }
+        
+        /* Table Interaction */
+        .trade-row:hover { background-color: #2d3748; cursor: pointer; }
+        
+        /* Carousel Styles */
+        .carousel-img { max-height: 500px; width: auto; object-fit: contain; border-radius: 8px; }
+        .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; padding: 10px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .nav-btn:hover { background: rgba(59, 130, 246, 0.8); }
+        .prev-btn { left: 10px; }
+        .next-btn { right: 10px; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -44,7 +51,7 @@
             <i class="fa-solid fa-layer-group text-accent text-2xl"></i>
             <div>
                 <h1 class="text-xl font-bold tracking-wide text-white">ABS <span class="text-accent">MANAGER</span></h1>
-                <p class="text-xs text-gray-500">Compatible Google Sheets</p>
+                <p class="text-xs text-gray-500">Full Data • Image Carousel • Custom Sessions</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -56,7 +63,7 @@
                 <input type="file" id="importFile" class="hidden" onchange="importCSVFile(this)">
             </label>
             <button onclick="openModal()" class="px-4 py-2 text-xs bg-accent hover:bg-blue-600 rounded text-white font-bold transition shadow-lg shadow-blue-500/20 flex items-center">
-                <i class="fa-solid fa-plus mr-2"></i> Add Trade
+                <i class="fa-solid fa-plus mr-2"></i> New Trade
             </button>
         </div>
     </nav>
@@ -64,9 +71,9 @@
     <!-- Main Content -->
     <main class="flex-1 p-6 grid grid-cols-1 xl:grid-cols-4 gap-6 max-w-[1920px] mx-auto w-full">
         
-        <!-- Left Column: Stats -->
+        <!-- Left Column -->
         <div class="xl:col-span-1 space-y-6">
-            <!-- Net Profit -->
+            <!-- Profit -->
             <div class="glass-panel rounded-xl p-6 shadow-lg relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10"><i class="fa-solid fa-wallet text-6xl text-white"></i></div>
                 <h3 class="text-text text-sm font-medium uppercase">Net Profit</h3>
@@ -77,20 +84,28 @@
                 </div>
             </div>
 
-            <!-- Session Performance (NEW) -->
-            <div class="glass-panel rounded-xl p-6 shadow-lg">
-                <h3 class="text-text text-sm font-medium uppercase mb-4">Performance by Session</h3>
-                <div class="relative h-40 w-full">
-                    <canvas id="sessionChart"></canvas>
+            <!-- Monthly R -->
+            <div class="glass-panel rounded-xl p-6 shadow-lg border-l-4 border-accent">
+                <h3 class="text-text text-sm font-medium uppercase mb-2">Monthly Projection</h3>
+                <div class="flex justify-between items-end mb-4">
+                    <div>
+                        <p class="text-xs text-gray-400">Avg Monthly R</p>
+                        <p id="avg-monthly-r" class="text-2xl font-bold text-white">0R</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400 mb-1">1R Value ($)</p>
+                        <input type="number" id="inputRValue" value="250" class="bg-dark border border-gray-600 text-white text-sm rounded px-2 py-1 w-24 text-right outline-none focus:border-accent" oninput="calculateMonthlyProjection()">
+                    </div>
                 </div>
-                <div id="session-stats" class="grid grid-cols-2 gap-2 mt-4 text-xs text-gray-400">
-                    <!-- Injected via JS -->
+                <div class="bg-dark/50 p-3 rounded border border-gray-700 text-center">
+                    <p class="text-xs text-gray-400 uppercase">Est. Income</p>
+                    <p id="projected-monthly-gain" class="text-xl font-bold text-success">$0.00</p>
                 </div>
             </div>
 
-            <!-- Setup Performance (Grades) -->
+            <!-- Grades -->
              <div class="glass-panel rounded-xl p-4 shadow-lg flex-1">
-                <h3 class="text-text text-sm font-medium uppercase mb-3">Setup Grading (Note)</h3>
+                <h3 class="text-text text-sm font-medium uppercase mb-3">Setup Grading</h3>
                 <div class="overflow-y-auto max-h-[300px]">
                     <table class="w-full text-sm text-left text-gray-400">
                         <thead class="text-xs text-gray-500 uppercase border-b border-gray-700 sticky top-0 bg-card">
@@ -104,26 +119,25 @@
 
         <!-- Right Column -->
         <div class="xl:col-span-3 space-y-6 flex flex-col">
-            
-            <!-- Charts Row -->
+            <!-- Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 glass-panel rounded-xl p-6 shadow-lg">
                     <h3 class="text-text text-sm font-medium uppercase mb-4">Equity Curve</h3>
-                    <div class="relative h-64 w-full"><canvas id="equityChart"></canvas></div>
+                    <div class="relative h-56 w-full"><canvas id="equityChart"></canvas></div>
                 </div>
                 <div class="glass-panel rounded-xl p-6 shadow-lg">
-                    <h3 class="text-text text-sm font-medium uppercase mb-4">Win/Loss Distribution</h3>
-                    <div class="relative h-64 w-full"><canvas id="winrateChart"></canvas></div>
+                    <h3 class="text-text text-sm font-medium uppercase mb-4">Session P/L</h3>
+                    <div class="relative h-56 w-full"><canvas id="sessionChart"></canvas></div>
                 </div>
             </div>
 
-            <!-- Trade Log Table -->
+            <!-- Trade Table -->
             <div class="glass-panel rounded-xl p-6 shadow-lg overflow-hidden flex-1 min-h-[400px]">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-text text-sm font-medium uppercase">Trade Log</h3>
-                    <input type="text" id="search" placeholder="Search notes, setup..." class="bg-dark border border-gray-700 text-white text-xs rounded px-3 py-1 focus:border-accent outline-none w-64">
+                    <h3 class="text-text text-sm font-medium uppercase">Trade Log <span class="text-xs text-gray-500 ml-2">(Click to view details & images)</span></h3>
+                    <input type="text" id="search" placeholder="Search notes..." class="bg-dark border border-gray-700 text-white text-xs rounded px-3 py-1 focus:border-accent outline-none w-64">
                 </div>
-                <div class="overflow-x-auto max-h-[400px]">
+                <div class="overflow-x-auto max-h-[500px]">
                     <table class="w-full text-sm text-left text-gray-400">
                         <thead class="text-xs text-gray-500 uppercase bg-gray-800 sticky top-0 z-10">
                             <tr>
@@ -131,11 +145,10 @@
                                 <th class="px-4 py-3">Time</th>
                                 <th class="px-4 py-3">Session</th>
                                 <th class="px-4 py-3">Bias</th>
-                                <th class="px-4 py-3">Setup (Grade)</th>
+                                <th class="px-4 py-3">Setup</th>
                                 <th class="px-4 py-3 text-right">P/L</th>
-                                <th class="px-4 py-3 text-center">Img</th>
+                                <th class="px-4 py-3 text-center"><i class="fa-solid fa-image"></i></th>
                                 <th class="px-4 py-3">Notes</th>
-                                <th class="px-4 py-3 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody id="trades-table-body" class="divide-y divide-gray-800"></tbody>
@@ -145,26 +158,42 @@
 
             <!-- Monte Carlo Simulator -->
             <div class="glass-panel rounded-xl p-6 shadow-lg border-t-4 border-accent">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-lg font-bold text-white"><i class="fa-solid fa-flask text-accent mr-2"></i> Monte Carlo Simulator</h2>
-                    <div class="flex items-center gap-2">
-                         <span class="text-xs text-gray-400">Risk:</span>
-                         <input type="range" id="riskSlider" min="0.25" max="2.0" step="0.25" value="0.50" class="w-24" oninput="runMonteCarlo()">
-                         <span id="riskDisplay" class="text-accent font-bold text-sm">0.50%</span>
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                    <div>
+                        <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock text-accent"></i> Evaluation Speed Simulator
+                        </h2>
+                        <p class="text-[10px] text-gray-400 mt-1">Target: $53k | DD: $2k | Max Loss: $1k | Best = Fastest Time</p>
+                    </div>
+                    <div class="flex items-center gap-3 bg-dark p-2 rounded border border-gray-700">
+                         <span class="text-xs text-gray-400 uppercase font-bold">Risk %</span>
+                         <input type="range" id="riskSlider" min="0.25" max="2.5" step="0.25" value="0.50" class="w-32" oninput="runMonteCarlo()">
+                         <div class="text-right">
+                             <div id="riskDisplayPercent" class="text-white font-bold text-sm">0.50%</div>
+                             <div id="riskDisplayValue" class="text-accent text-xs font-mono">$250</div>
+                         </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div class="lg:col-span-1 flex flex-col justify-center gap-2 text-center">
-                        <div class="bg-card p-2 rounded border border-gray-700">
-                            <p class="text-[10px] text-gray-400 uppercase">Pass Rate</p>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-1">
+                        <table class="w-full text-sm text-left text-gray-400 border border-gray-700 rounded overflow-hidden">
+                            <thead class="bg-gray-800 text-xs uppercase text-gray-500">
+                                <tr><th class="px-3 py-2">Scenario</th><th class="px-3 py-2 text-right">Time To Pass</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800 bg-dark/50">
+                                <tr><td class="px-3 py-2 text-success"><i class="fa-solid fa-bolt mr-1"></i> Best</td><td class="px-3 py-2 text-right font-bold text-white" id="scen-best-time">--</td></tr>
+                                <tr><td class="px-3 py-2 text-accent"><i class="fa-solid fa-minus mr-1"></i> Median</td><td class="px-3 py-2 text-right font-bold text-white" id="scen-med-time">--</td></tr>
+                                <tr><td class="px-3 py-2 text-gray-400"> Average</td><td class="px-3 py-2 text-right font-bold text-white" id="scen-avg-time">--</td></tr>
+                                <tr><td class="px-3 py-2 text-danger"><i class="fa-solid fa-hourglass mr-1"></i> Worst</td><td class="px-3 py-2 text-right font-bold text-white" id="scen-worst-time">--</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-4 text-center bg-card p-2 rounded">
+                            <span class="text-xs text-gray-500 uppercase">Pass Probability</span>
                             <p id="sim-pass-rate" class="text-2xl font-bold text-white">--%</p>
                         </div>
-                        <div class="bg-card p-2 rounded border border-gray-700">
-                            <p class="text-[10px] text-gray-400 uppercase">Avg Days</p>
-                            <p id="sim-avg-days" class="text-lg font-bold text-accent">--</p>
-                        </div>
                     </div>
-                    <div class="lg:col-span-3 relative h-48 w-full">
+                    <div class="lg:col-span-2 relative h-56 w-full">
                         <canvas id="monteCarloChart"></canvas>
                     </div>
                 </div>
@@ -172,208 +201,1517 @@
         </div>
     </main>
 
-    <!-- Modal (Add/Edit Trade) -->
-    <div id="tradeModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center z-50">
-        <div class="bg-card border border-gray-700 rounded-xl shadow-2xl w-full max-w-2xl p-6 m-4">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-xl font-bold text-white">Add Trade</h2>
-                <button onclick="closeModal()" class="text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+    <!-- DETAILED TRADE MODAL -->
+    <div id="tradeModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center z-50 p-4">
+        <div class="bg-card border border-gray-700 rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center p-5 border-b border-gray-700 bg-gray-800">
+                <div>
+                    <h2 class="text-xl font-bold text-white" id="modalTitle">Trade Details</h2>
+                    <span id="modalDate" class="text-xs text-gray-400 font-mono">--</span>
+                </div>
+                <div class="flex gap-3">
+                    <button type="button" onclick="deleteCurrentTrade()" class="text-danger hover:bg-red-900/20 px-3 py-1 rounded text-sm"><i class="fa-solid fa-trash mr-2"></i>Delete</button>
+                    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-white px-3 py-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+                </div>
             </div>
-            <form id="tradeForm" class="space-y-4">
-                <div class="grid grid-cols-3 gap-4">
-                    <div><label class="label">Date</label><input type="date" id="inpDate" class="input"></div>
-                    <div><label class="label">Time</label><input type="time" id="inpTime" class="input"></div>
-                    <div><label class="label">Asset</label><input type="text" id="inpAsset" class="input" value="NQ"></div>
+            
+            <div class="flex-1 overflow-y-auto flex flex-col lg:flex-row">
+                
+                <!-- Left: Image Carousel -->
+                <div class="lg:w-1/2 bg-black flex flex-col justify-center items-center relative min-h-[300px] border-b lg:border-b-0 lg:border-r border-gray-700 p-4">
+                    <div id="carouselContainer" class="relative w-full h-full flex items-center justify-center">
+                        <img id="carouselImage" src="" class="carousel-img hidden">
+                        <p id="noImageText" class="text-gray-600 text-sm">No Screenshot Available</p>
+                        
+                        <!-- Nav Buttons -->
+                        <button id="prevBtn" class="nav-btn prev-btn hidden" onclick="prevImage()"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button id="nextBtn" class="nav-btn next-btn hidden" onclick="nextImage()"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                    <div id="imageCounter" class="text-xs text-gray-500 mt-2 hidden">1 / 1</div>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <div><label class="label">Bias</label><select id="inpBias" class="input"><option>BULL</option><option>BEAR</option></select></div>
-                    <div><label class="label">Type</label><select id="inpType" class="input"><option>Long</option><option>Short</option></select></div>
-                    <div><label class="label">Setup</label><input type="text" id="inpSetup" class="input" value="SMT + IOB m1"></div>
+
+                <!-- Right: Form Data -->
+                <div class="lg:w-1/2 p-6 bg-card overflow-y-auto">
+                    <form id="tradeForm" class="space-y-5">
+                        <input type="hidden" id="inpId">
+
+                        <!-- Key Stats -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Net P/L</label>
+                            <input type="number" id="inpPL" step="0.01" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-lg font-bold focus:border-accent outline-none"></div>
+                            
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Points</label>
+                            <input type="text" id="inpPts" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
+                        </div>
+
+                        <!-- Details Grid -->
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Entry Time</label>
+                            <input type="time" id="inpTime" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
+
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Date</label>
+                            <input type="date" id="inpDate" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
+
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Bias</label>
+                            <select id="inpBias" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>BULL</option><option>BEAR</option></select></div>
+
+                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Type</label>
+                            <select id="inpType" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>Long</option><option>Short</option></select></div>
+                        </div>
+
+                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Setup</label>
+                        <input type="text" id="inpSetup" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
+                        
+                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Grade</label>
+                        <select id="inpGrade" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>A</option><option>A-</option><option>B+</option><option>B</option><option>C</option><option>N/A</option></select></div>
+
+                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Confirmations / Notes (Full Text)</label>
+                        <textarea id="inpConf" rows="8" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm font-mono leading-relaxed"></textarea></div>
+
+                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Screenshot Links (Space separated)</label>
+                        <input type="text" id="inpLink" class="w-full bg-dark border border-gray-600 rounded p-2 text-accent text-xs" oninput="updateCarouselFromInput()"></div>
+                        
+                        <!-- Hidden fields for data integrity -->
+                        <div class="hidden">
+                           <input type="text" id="inpAsset"><input type="text" id="inpDay"><input type="text" id="inpSession">
+                           <input type="text" id="inpSl"><input type="text" id="inpRr"><input type="text" id="inpRisk">
+                           <input type="text" id="inpRules"><input type="text" id="inpBotTop"><input type="text" id="inpPremDisc">
+                           <input type="text" id="inpConfluences"><input type="text" id="inpPsy"><input type="text" id="inpComment"><input type="text" id="inpLateObs">
+                        </div>
+
+                        <div class="pt-4 flex justify-end">
+                             <button type="submit" class="w-full bg-success hover:bg-green-600 text-white font-bold py-3 rounded shadow-lg transition">Save Changes</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
-                    <div><label class="label">Net P/L ($)</label><input type="number" id="inpPL" step="0.01" class="input" placeholder="250"></div>
-                    <div><label class="label">Pts</label><input type="text" id="inpPts" class="input" placeholder="10pts"></div>
-                    <div><label class="label">Grade (Note)</label><select id="inpGrade" class="input"><option>A</option><option>A-</option><option>B+</option><option>B</option><option>C</option></select></div>
-                </div>
-                <div><label class="label">Screenshot URL(s)</label><input type="text" id="inpLink" class="input" placeholder="https://tradingview.com/x/..."></div>
-                <div><label class="label">Entry Notes</label><textarea id="inpConf" rows="3" class="input" placeholder="Internal smt..."></textarea></div>
-                <button type="submit" class="w-full bg-accent hover:bg-blue-600 text-white font-bold py-2 rounded">Save</button>
-            </form>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- DATA MODEL ---
-        // Maps exactly to your CSV columns for export
-        /* 
-           0:Date, 1:Asset, 2:Entry Time, 3:Day, 4:BIAS, 5:L/S, 6:Net P/L, 7:Pts, 8:SL SIZE, 
-           9:Setup, 10:NET RR, 11:Risk, 12:Rules?, 13:Screenshot, 14:Confirmations, 
-           15:Note(Grade), 16:bot/top, 17:prem/disc, 18:confluences, 19:PSY, 20:Comment, 21:LateObs 
-        */
-
-        // Base Data from your file (Adapted 1:1)
+        // --- FULL DATASET FROM USER ---
         const initialCsvData = `Date,Asset,Entry Time,Day of Week,BIAS,Long/Short,Net P/L,Pts,SL SIZE,Setup,NET RR,Risk,Rules Followed?,Screenshot,Entry Confirmations / Notes,Note,bot/top catch,too prem/disc?,enough confluences?,PSYCHOLOGY,Comment,Late Observations
-10-1-24,NQ,10:19:00 PM,Tues,BEAR,Short,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ez8Dz3Dg,"internal smt... targeting asial... A BE moved early...",A,NO,NO,YES,,,
-10-3-24,NQ,3:36:00 AM,Thurs,BEAR,Short,$250,12.5pts,12.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jVMoRXYQ,"internal smt... targeting pdl... B",B,NO,YES,YES,,,
-10-3-24,NQ,4:29:00 AM,Thurs,BEAR,Short,-$250,-17.75pts,17.75pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/52SD0qiY,"internal smt... targeting m15 ssl... A",A,NO,NO,YES,,,
-10-3-24,NQ,5:41:00 AM,Thurs,BEAR,Short,$250,12.5pts,10.75pts,SMT + IOB m1,1:5,0.50%,YES,https://www.tradingview.com/x/9l9PeSFb,"internal smt m5 high... tagreting m15 ssl... A",A,NO,NO,YES,,,
-10-3-24,NQ,7:21:00 AM,Thurs,BULL,Long,$250,8.25pts,8.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/m9o4e4C2,"internal smt... targeting m15 bsl... A",A,NO,NO,YES,,,
-10-3-24,NQ,10:32:00 AM,Thurs,BULL,Long,$250,-52.25pts,52.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/KNfdV1zT,"internal smt m15 low... targeting m15 bsl... A",A,NO,NO,YES,,,
-10-4-24,NQ,1:52:00 AM,Fri,BULL,Long,-$250,-16.5pts,16.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hO2vfk6s,"internal smt... targeting m15 bsl... A",A,NO,NO,YES,,,
-10-4-24,NQ,3:50:00 AM,Fri,BULL,Long,-$250,-19.5pts,19.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0oxNxCIM,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-4-24,NQ,5:27:00 AM,Fri,BULL,Long,$250,14.25pts,14.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/AH2pU8Nh,"internal smt... targeting london high... B",B,NO,NO,YES,,,
-10-8-24,NQ,4:17:00 AM,Tues,BULL,Long,-$250,-23pts,23pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/XUSwXnJI,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-9-24,NQ,1:47:00 AM,Weds,BULL,Long,-$250,-23.5pts,23.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/r22uTGIJ,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-9-24,NQ,2:41:00 AM,Weds,BULL,Long,$250,10.5pts,10.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Eggw2Z4v,"internal smt... targeting m15 bsl... A",A,NO,NO,YES,,,
-10-9-24,NQ,3:33:00 AM,Weds,BULL,Long,$250,20.75pts,20.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/pEFbipod,"internal smt... targeting h1 fvg- ... A",A,NO,NO,YES,,,
-10-9-24,NQ,7:45:00 AM,Weds,BULL,Long,-$250,-17.25pts,17.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JGOZBkJJ,"internal smt... targeting pdh... A",A,NO,NO,YES,,,
-10-9-24,NQ,10:56:00 AM,Weds,BULL,Long,$250,19.75pts,19.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/PSb1zECJ,"internal smt... targeting h4 bsl... A-",A-,NO,NO,YES,,,
-10-11-24,NQ,4:34:00 AM,Fri,BULL,Long,-$250,-21pts,21pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/rj1SeZrq,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-14-24,NQ,1:53:00 AM,Monday,BULL,Long,$250,8.5pts,8.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/gmrblGGH,"internal smt... targeting asiah... A",A,NO,NO,NO,,,
-10-14-24,NQ,3:09:00 AM,Monday,BULL,Long,$250,7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DWIexapD,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-14-24,NQ,4:05:00 AM,Monday,BULL,Long,$250,5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/mFkiY12h,"internal smt... targeting pdh... A",A,NO,NO,YES,,,
-10-14-24,NQ,7:17:00 AM,Monday,BULL,Long,$250,6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hgRKImmx,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-10-14-24,NQ,10:12:00 PM,Monday,BULL,Long,-$250,-5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/c7tHe1xU,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-15-24,NQ,2:36:00 AM,Tues,BULL,Long,$250,7pts,7pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DKUX6mw8,"internal smt... targeting m15 fvg-... A",A,NO,NO,YES,,,
-10-15-24,NQ,3:09:00 AM,Tues,BULL,Long,$250,13pts,13pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/oGFBO3jA,"internal smt... targeting m15 ob-... A",A,NO,NO,YES,,,
-10-15-24,NQ,4:43:00 AM,Tues,BULL,Long,$250,14.75pts,14.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/RqP1IMBm,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-10-15-24,NQ,7:23:00 AM,Tues,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wajlG9MP,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-15-24,NQ,10:27:00 AM,Tues,BULL,Long,-$250,-21.25pts,21.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TZJve2GR,"internal smt... targeting m15 brkr-... A",A,NO,NO,YES,,,
-10-16-24,NQ,7:57:00 AM,Weds,BULL,Long,-$250,-6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/enLufYC5,"internal smt... targeting london high... A-",A,NO,NO,NO,,,
-10-17-24,NQ,3:26:00 AM,Thurs,BULL,Long,$250,25.75pts,25.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/F2ER4jFx,"internal smt... targeting h1 bsl... A-",A-,NO,YES,NO,,,
-10-17-24,NQ,5:49:00 AM,Thurs,BULL,Long,$250,18.75pts,18.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jsCwTV5v,"internal smt... targeting h4 fvg-... B",B,NO,NO,NO,,,
-10-17-24,NQ,10:14:00 AM,Thurs,BULL,Long,$250,48pts,48pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/HOIrDVxv,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-10-17-24,NQ,10:24:00 PM,Thurs,BULL,Long,$250,8pts,8pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ILc0pokV,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-10-18-24,NQ,5:48:00 AM,Fri,BULL,Long,-$250,-10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/GsU7QGQ9,"internal smt... targeting london high... A-",A-,NO,YES,YES,,,
-10-22-24,NQ,2:20:00 AM,Tues,BULL,Long,-$250,-8.5pts,8.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/toXoAVxH,"internal smt... targeting h1 fvg-... A",A,NO,YES,YES,,,
-10-22-24,NQ,5:35:00 AM,Tues,BULL,Long,-$250,-18.75pts,18.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/AJPZ4T8l,"internal smt... targeting h1 fvg-... B",B,YES,NO,NO,,,
-10-23-24,NQ,4:55:00 AM,Weds,BULL,Long,$250,6.25pts,6.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/NyujRGLz,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-10-23-24,NQ,10:20:00 AM,Weds,BULL,Long,$250,47.25pts,47.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/O2wrwCso,"internal smt... targeting london high... B",B,NO,NO,YES,,,
-10-22-24,NQ,11:20:00 PM,Thurs,BULL,Long,-$250,-9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/duYWKcyB,"internal smt... targeting asiah... B",B,NO,NO,YES,,,
-10-28-24,NQ,12:06:00 AM,Monday,BULL,Long,$250,15pts,15pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZQ5BVu0o,"internal smt... targeting m15 fvg-... B",B,YES,NO,YES,,,
-10-29-24,NQ,3:15:00 AM,Tues,BULL,Long,$250,10pts,10pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/b127XDMH,"internal smt... targeting h1 bsl... B",B,NO,YES,NO,,,
-10-29-24,NQ,12:34:00 AM,Tues,BULL,Long,-$250,-15.75pts,15.75pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/6fHKq19S,"internal smt... targeting asiah... B",B,YES,NO,YES,,,
-10-30-24,NQ,3:05:00 AM,Weds,BULL,Long,$250,13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/fV2XqhNP,"internal smt... targeting asiah... B",B,NO,YES,YES,,,
-10-30-24,NQ,4:48:00 AM,Weds,BULL,Long,$250,9.25pts,9.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BanxqLDL,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-10-31-24,NQ,1:44:00 AM,Thurs,BEAR,Short,$250,9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/eUhQLME7,"internal smt... targeting h1 ssl... B",B,NO,NO,NO,,,
-10-31-24,NQ,3:43:00 AM,Thurs,BEAR,Short,$250,14pts,14pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/bJLSsPg3,"internal smt... targeting h4 ssl... A",A,NO,NO,YES,,,
-10-31-24,NQ,7:42:00 AM,Thurs,BULL,Long,$250,14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/nbvg0NLg,"internal smt... targeting h1 fvg-... A",A,NO,NO,NO,,,
-11-4-24,NQ,3:12:00 AM,Monday,BULL,Long,-$250,-22.25pts,22.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Mcn3FN7q,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-11-5-24,NQ,10:36:00 AM,Tues,BULL,Long,-$250,-31pts,31pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/znTQkoRb,"internal smt... targeting h4 bsl... B",B,NO,YES,NO,,,
-11-7-24,NQ,2:20:00 AM,Thurs,BULL,Long,-$250,-12.75pts,12.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UmcnodBH,"internal smt... targeting ath... B",B,NO,YES,NO,,,
-11-7-24,NQ,10:11:00 PM,Thurs,BULL,Long,$250,9.25pts,9.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/amwBuFFK,"internal smt... targeting asiah... B",B,NO,YES,YES,,,
-11-8-24,NQ,5:58:00 AM,Fri,BULL,Long,-$250,-16pts,16pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/KR10ElDv,"internal smt... targeting m15 fvg-... B",B,YES,NO,YES,,,
-11-8-24,NQ,10:16:00 AM,Fri,BULL,Long,$250,20pts,20pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TfKKpmVH,"internal smt... targeting NYAM high... A",A,NO,NO,NO,,,
-11-11-24,NQ,1:19:00 AM,Monday,BULL,Long,-$250,-13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZbFE8R5i,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-11-13-24,NQ,4:31:00 AM,Weds,BULL,Long,-$250,-12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wVm9NhzM,"internal smt... targeting asiah... B",B,NO,YES,YES,,,
-11-13-24,NQ,6:14:00 AM,Weds,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qFmx57Nx,"internal smt... targeting m15 fvg-... A",A,NO,NO,YES,,,
-11-14-24,NQ,1:20:00 AM,Thurs,BULL,Long,$250,10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lmLtlf5o,"internal smt... targeting pdl... B",B,NO,NO,YES,,,
-11-14-24,NQ,5:12:00 AM,Thurs,BULL,Long,$250,11.5pts,11.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/s2wKWWDJ,"internal smt... targeting london high... A",A,NO,YES,YES,,,
-11-15-24,NQ,7:16:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wrsRRwsP,"internal smt... targeting m15 ob+... A",A,NO,NO,YES,,,
-11-18-24,NQ,3:11:00 AM,Monday,BULL,Long,$250,8.75pts,8.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/gZl6fjOW,"internal smt... targeting london high... B",B,YES,YES,NO,,,
-11-21-24,NQ,6:46:00 AM,Thurs,BULL,Long,$250,32pts,32pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BXZvN9nG,"internal smt... targeting asiah... B",B,NO,YES,NO,,,
-11-22-24,NQ,10:23:00 AM,Fri,BULL,Long,-$250,-42.25pts,42.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/mGaVwivq,"internal smt... targeting NYAM high... A-",A-,NO,NO,YES,,,
-11-26-24,NQ,3:17:00 AM,Tues,BULL,Long,-$250,-25.25pts,25.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ENE1krTt,"internal smt... targeting asiah... A-",A-,NO,YES,YES,,,
-11-26-24,NQ,10:45:00 PM,Tues,BULL,Long,-$250,-9.5pts,9.5pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/eLEfBXTT,"internal smt... targeting asiah... B",B,NO,NO,NO,,,
-11-27-24,NQ,12:25:00 AM,Weds,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/6RFi0gXL,"internal smt... targeting m15 fvg-... A-",A-,YES,NO,YES,,,
-11-27-24,NQ,3:48:00 AM,Weds,BULL,Long,-$250,-18.5pts,18.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8foEK9Mx,"internal smt... targeting london high... B",B,YES,NO,NO,,,
-12-3-24,NQ,10:33:00 AM,Tues,BULL,Long,-$250,-27.5pts,27.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rrgbsjMh,"internal smt... targeting pdh... B",B,NO,NO,NO,,,
-12-4-24,NQ,4:44:00 AM,Thurs,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/03HgHbpy,"internal smt... targeting ath... B",B,NO,NO,YES,,,
-12-6-24,NQ,6:50:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xwAKiro6,"internal smt... targeting m15 fvg-... B+",B+,YES,NO,YES,,,
-12-9-24,NQ,3:37:00 AM,Monday,BULL,Long,-$250,-11pts,11pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/u2yJu3Wr,"internal smt... targeting ath... A",A,NO,NO,YES,,,
-12-10-24,NQ,7:18:00 AM,Tues,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/OWvDJAMM,"internal smt... targeting h1 bsl... B",B,NO,YES,YES,,,
-12-10-24,NQ,11:07:00 PM,Tues,BULL,Long,-$250,-4.75pts,4.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/QNCrfzFL,"internal smt... targeting asiah... A-",A-,NO,NO,YES,,,
-12-11-24,NQ,12:48:00 AM,Weds,BULL,Long,$250,5.75pts,5.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/skE1WPvf,"internal smt... targeting asiah... A-",A-,NO,NO,YES,,,
-12-12-24,NQ,5:23:00 AM,Thurs,BULL,Long,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f7hiwV9R,"internal smt... targeting m15 fvg-... B",B,YES,NO,YES,,,
-12-12-24,NQ,7:06:00 AM,Thurs,BULL,Long,-$250,-9.75pts,9.75pts,SMT + IOB m1,1:4,0.50%,YES,https://www.tradingview.com/x/R0Uwaip8,"internal smt... targeting london high... B",B,YES,NO,YES,,,
-12-12-24,NQ,10:30:00 PM,Thurs,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f7hiwV9,"internal smt... targeting m15 fvg-... B",B,YES,NO,YES,,,
-12-13-24,NQ,2:22:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/kN5XKI52,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-12-13-24,NQ,10:13:00 AM,Fri,BULL,Long,-$250,-59pts,59pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/a9pUkeh4,"internal smt... targeting ath... A",A,NO,NO,YES,,,
-12-15-24,NQ,10:23:00 PM,Sun,BULL,Long,$250,6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rouDGILD,"internal smt... targeting ath... B",B,NO,NO,YES,,,
-12-16-24,NQ,12:06:00 AM,Monday,BULL,Long,-$250,-6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UYbl057n,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-12-16-24,NQ,6:30:00 AM,Monday,BULL,Long,$250,13.5pts,13.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/fp7uS7oR,"internal smt... targeting ath... A",A,NO,NO,YES,,,
-12-16-24,NQ,10:24:00 AM,Monday,BULL,Long,$250,46.5pts,46.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xWA5Jdkv,"internal smt... targeting ath... A",A,NO,NO,YES,,,
-12-17-24,NQ,12:28:00 AM,Tues,BULL,Long,-$250,-7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8jGbGsgd,"internal smt... targeting asiah/ath... A",A,NO,NO,YES,,,
-12-17-24,NQ,6:17:00 AM,Tues,BULL,Long,-$250,-19.5pts,19.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/NHOURpOY,"internal smt... targeting ath asiah... A",A,NO,NO,YES,,,
-12-17-24,NQ,10:37:00 PM,Tues,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/cuHOwVej,"internal smt... targeting ath... A",A,NO,NO,YES,,,
-12-18-24,NQ,5:57:00 AM,Weds,BULL,Long,$250,13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jkggXuEs,"internal smt... targeting ath... A-",A-,NO,YES,NO,,,
-12-19-24,NQ,4:30:00 AM,Thurs,BULL,Long,$250,17.5pts,17.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/PrkDgweH,"internal smt... targeting m15 bsl... B",B,NO,NO,YES,,,
-12-20-24,NQ,2:42:00 AM,Fri,BULL,Long,-$250,-6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/V4yJU2zq,"internal smt... targeting m15 fvg-... B",B,NO,NO,YES,,,
-12-24-24,NQ,4:34:00 AM,Tues,BULL,Long,$250,15.75pts,15.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/QMkPb79g,"internal smt... targeting h1 bsl... A-",A-,NO,YES,NO,,,
-12-24-24,NQ,10:30:00 AM,Tues,BULL,Long,$250,33.25pts,33.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/WNql7jNo,"internal smt... targeting h4 fvg- CE... B",B,NO,YES,YES,,,
-12-27-24,NQ,2:08:00 AM,Fri,BEAR,Short,$250,8.25pts,8.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zV8pCoQg,"internal smt... taregting pdl... A-",A-,NO,YES,YES,,,
-1-2-25,NQ,3:17:00 AM,Thurs,BEAR,Short,$250,30.25pts,30.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/WhcwJikr,"internal smt... targeting m15 fvg+... B",B,YES,NO,YES,,,
-1-3-25,NQ,4:40:00 AM,Fri,BULL,Long,-$250,-14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BG5tfbmE,"internal smt... targeting h1 ob-... B",B,NO,YES,YES,,,
-1-6-25,NQ,1:24:00 AM,Monday,BULL,Long,$250,11.75pts,11.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/51swrDn9,"internal smt... targeting pdh... B",B,NO,NO,YES,,,
-1-6-25,NQ,10:13:00 AM,Monday,BULL,Long,$250,58.5pts,58.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/pO7WmS9h,"internal smt... targeting h4 bsl... A-",A-,NO,YES,YES,,,
-1-8-25,NQ,10:08:00 AM,Weds,BEAR,Short,$250,54.5pts,54.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f8UPXcZ2,"internal smt... targeting h4 ssl... A",A,NO,NO,YES,,,
-1-9-25,NQ,1:15:00 AM,Thurs,BEAR,Short,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8RrsDkCK,"internal smt... targeting asial... A",A,NO,NO,YES,,,
-1-9-25,NQ,5:50:00 AM,Thurs,BULL,Long,-$250,-15pts,15pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qBCw53cn,"internal smt... targeting asiah... B",B,NO,YES,YES,,,
-1-9-25,NQ,6:15:00 AM,Thurs,BULL,Long,-$250,-18.5pts,18.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/sGsI1hir,"internal smt... targeting asiah... A-",A-,NO,NO,YES,,,
-1-13-25,NQ,12:06:00 AM,Monday,BEAR,Short,$250,9pts,9pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/POSzbwk8,"internal smt... targeting asial... A",A,NO,NO,YES,,,
-1-13-25,NQ,4:44:00 AM,Monday,BEAR,Short,-$250,-33.5pts,33.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jbElvtwt,"internal smt... targeting h4 ssl... A",A,NO,NO,YES,,,
-1-14-25,NQ,12:34:00 AM,Tues,BULL,Long,$250,11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/GCZfKtJs,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-1-15-25,NQ,12:16:00 AM,Weds,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/sia5weEd,"internal smt... targeting m15 bsl... A-",A-,NO,YES,YES,,,
-1-16-25,NQ,1:10:00 AM,Thurs,BULL,Long,$250,24.75pts,24.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/luo73MbK,"internal smt... targeting asiah... B",B,YES,NO,YES,,,
-1-16-25,NQ,3:34:00 AM,Thurs,BULL,Long,$250,22.25pts,22.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/FaSGJkNb,"internal smt... targeting london high... B",B,NO,YES,YES,,,
-1-16-25,NQ,6:51:00 AM,Thurs,BULL,Long,-$250,-23.75pts,23.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lyAC4g5x,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-1-17-25,NQ,2:20:00 AM,Fri,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BBhCcbxI,"internal smt... targeting m15 bsl... A-",A-,NO,NO,YES,,,
-1-17-25,NQ,4:48:00 AM,Fri,BULL,Long,-$250,-10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zK7v2NIt,"internal smt... targeting h1 bsl... B",B,NO,YES,YES,,,
-1-17-25,NQ,10:29:00 AM,Fri,BULL,Long,$500,47.25pts,47.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/20ksVdvc,"internal smt... targeting NYAM high... A",A,NO,NO,YES,,,
-1-22-25,NQ,1:35:00 AM,Weds,BULL,Long,-$250,-5.75pts,5.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Tk0xcsXh,"internal smt... targeting asiah... B",B,NO,YES,YES,,,
-1-22-25,NQ,2:05:00 AM,Weds,BULL,Long,$500,7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/l21oNTbb,"internal smt... targeting m15 ob-... A",A,NO,NO,YES,,,
-1-23-25,NQ,6:20:00 AM,Thurs,BULL,Long,$250,14pts,14pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/kkRe714n,"internal smt... targeting h1 fvg-... B",B,YES,NO,YES,,,
-1-24-25,NQ,5:49:00 AM,Fri,BULL,Long,$250,11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/V48x9FBZ,"external smt london low... targeting london high... B",B,NO,NO,NO,,,
-1-27-25,NQ,3:39:00 AM,Monday,BEAR,Short,$250,44.25pts,44.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lJZnCppl,"internal smt... targeting daily fvg+... A",A,NO,NO,YES,,,
-1-27-25,NQ,10:24:00 AM,Monday,BULL,Long,$250,86pts,86pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0IpI0Wqz,"internal smt... targeting h4 fvg-... A-",A-,NO,NO,YES,,,
-1-29-25,NQ,12:08:00 PM,Weds,BULL,Long,-$250,-5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zhUAP17l,"internal smt 2x... targeting asiah... A-",A-,NO,YES,YES,,,
-1-29-25,NQ,10:25:00 AM,Weds,BULL,Long,-$250,-60.25pts,60.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/cyEfON9K,"internal smt... targeting london high... B",B,YES,NO,YES,,,
-1-30-25,NQ,12:46:00 AM,Thurs,BULL,Long,-$250,-14.25pts,14.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/LWSswpsg,"internal smt... targeting pdh... A-",A-,NO,YES,YES,,,
-1-30-25,NQ,2:11:00 AM,Thurs,BULL,Long,$250,10.5pts,10.5pts,SMT + IOB m1,1:4,0.50%,YES, https://www.tradingview.com/x/pIYPDJ0A,"internal smt... targeting asiah... B",B,YES,NO,YES,,,
-1-30-25,NQ,11:12:00 PM,Thurs,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DeNfp0YE,"internal smt... targeting asiah... B",B,NO,NO,YES,,,
-1-30-25,NQ,11:40:00 PM,Thurs,BULL,Long,-$250,-9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rbFgO6IZ,"internal smt... targeting m15 bsl... B",B,YES,NO,YES,,,
-1-31-25,NQ,2:46:00 AM,Thurs,BULL,Long,-$250,-14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xWfrDv7f,"internal smt... targeting london high... A-",A-,NO,YES,YES,,,
-2-3-25,NQ,10:25:00 PM,Monday,BULL,Long,-$250,-20.25pts,20.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hBFDxvX6,"internal smt... targeting m15 ob-... A",A,NO,NO,YES,,,
-2-5-25,NQ,10:33:00 PM,Weds,BULL,Long,$250,6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/1t03XMtF,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-2-6-25,NQ,1:46:00 AM,Thurs,BULL,Long,-$250,-6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZMZXmjjE,"internal smt... targeting m15 bsl... A-",A-,NO,YES,YES,,,
-2-6-25,NQ,3:05:00 AM,Thurs,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/036Dqrg4,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-2-7-25,NQ,4:31:00 AM,Fri,BULL,Long,$250,12.5pts,12.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/VGi9qGwT,"internal smt 2x... targeting london high... A--",A-,NO,NO,YES,,,
-2-10-25,NQ,1:40:00 AM,Monday,BULL,Long,-$250,-8.75pts,8.75pts,SMT + IOB m1,1:4,0.50%,YES,https://www.tradingview.com/x/a3DdHtVY,"external smt m15 low... targeting m15 bsl... B",B,NO,NO,YES,,,
-2-10-25,NQ,1:58:00 AM,Monday,BULL,Long,-$250,-12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/LhahkKGX,"external smt m15 low... targeting m15 bsl... A",A,NO,NO,YES,,,
-2-11-25,NQ,4:49:00 AM,Tues,BULL,Long,-$250,-15.25pts,15.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/CgdJ1oKO,"internal smt... targeting m15 bsl... A",A,NO,NO,YES,,,
-2-11-25,NQ,10:09:00 AM,Tues,BULL,Long,$250,35pts,35pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qVupjVkq,"internal smt... targeting pdh... A",A,NO,NO,YES,,,
-2-12-25,NQ,2:29:00 AM,Weds,BULL,Long,$250,8pts,8pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/p4ewMJWu,"internal smt... targeting asiah... B",A,NO,NO,YES,,,
-2-12-25,NQ,10:55:00 AM,Weds,BULL,Long,-$250,-42.5pts,42.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/IhwMsARy,"internal smt... targeting m15 ob-... A-",A-,NO,YES,YES,,,
-2-13-25,NQ,1:07:00 AM,Thurs,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/F4pFWqak,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-2-13-25,NQ,5:12:00 AM,Thurs,BULL,Long,$250,22.5pts,22.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JFOcS8Vj,"internal smt... targeting london high... A-",A-,NO,YES,YES,,,
-2-13-25,NQ,10:39:00 PM,Thurs,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/7Z3rXziB,"internal smt... targeting asiah... A-",A-,NO,YES,YES,,,
-2-14-25,NQ,3:21:00 AM,Fri,BULL,Long,-$250,-13.5pts,13.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/P5bFoXZx,"external smt m15 low... targeting london high... A",A,NO,NO,YES,,,
-2-17-25,NQ,4:55:00 AM,Monday,BULL,Long,$250,21.5pts,21.5pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/D1PpalPO,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-2-18-25,NQ,3:56:00 AM,Tues,BULL,Long,$250,14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rvyL3vp4,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-2-18-25,NQ,10:54:00 AM,Tues,BULL,Long,-$250,-52.25pts,52.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Py5Gq14h,"internal smt... targeting m15 fvg-... B",B,YES,NO,YES,,,
-2-18-25,NQ,10:37:00 PM,Tues,BULL,Long,$250,4.75pts,4.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zcBA0fJ5,"internal smt... targeting m15 bsl... A",A,NO,NO,NO,,,
-2-20-25,NQ,6:13:00 AM,Thurs,BULL,Long,-$250,-7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lwPZpz3v,"internal smt... targeting london high... A",A,NO,NO,YES,,,
-2-21-25,NQ,2:24:00 AM,Fri,BULL,Long,-$250,-7.75pts,7.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/geepoKCd,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-2-23-25,NQ,10:37:00 PM,Sun,BULL,Long,$250,10pts,10pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TIZPSHb5,"internal smt 2x... targeting asiah... A-",A-,NO,YES,YES,,,
-2-24-25,NQ,12:20:00 AM,Monday,BULL,Long,$250,10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/SqPa6ysv,"internal smt... targeting asiah... A-",A-,NO,YES,YES,,,
-2-25-25,NQ,1:58:00 AM,Monday,BULL,Long,-$250,-11pts,11pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/u7F7Bq2z,"internal smt... targeting asiah... B",B,NO,NO,YES,,,
-2-26-25,NQ,5:39:00 AM,Weds,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/MxY5U9bW,"internal smt... targeting m15 fvg-... B",B,NO,NO,YES,,,
-2-27-25,NQ,10:30:00 AM,Weds,BULL,Long,$250,67pts,67pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/3CV905jp,"internal smt... targeting NYAM low... B",B,NO,NO,YES,,,
-3-6-25,NQ,11:10:00 PM,Thurs,BEAR,Short,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/7XzMoZCp,"internal smt... targeting asial... A",A,NO,NO,YES,,,
-3-10-25,NQ,1:24:00 AM,Monday,BEAR,Short,$250,10.5pts,10.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/eV4hXqN8,"internal smt... targeting asial... A",A,NO,NO,YES,,,
-3-10-25,NQ,8:54:00 PM,Monday,BEAR,Short,$250,28.75pts,28.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TGSSPjVE,"internal smt... targeting asial... A",A,NO,NO,YES,,,
-3-12-25,NQ,7:15:00 AM,Weds,BULL,Long,$250,23.25pts,23.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xJsAJXLj,"internal smt... targeting m15 ob-... B",B,NO,YES,YES,,,
-3-17-25,NQ,3:16:00 AM,Monday,BEAR,Short,-$250,-23.5pts,23.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0q0Ysqi8,"internal smt... targeting asial... A",A,NO,NO,NO,,,
-3-18-25,NQ,4:43:00 AM,Tues,BULL,Long,-$250,-11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UmuveRzT,"internal smt... targeting asiah... A",A,NO,NO,YES,,,
-3-20-25,NQ,12:28:00 AM,Thurs,BULL,Long,$250,9.75pts,9.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/1uKJu1dT,"internal smt... targeting asiah... A-",A-,NO,YES,YES,,,
-3-25-25,NQ,9:10:00 AM,Tues,BULL,Long,$250,54.5pts,54.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/yNm0AATW,"internal smt... targeting h4 bsl... A",A,NO,NO,YES,,,
-3-25-25,NQ,5:50:00 AM,Fri,BEAR,Short,$250,11.5pts,11.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JlkBgLnB,"internal smt... targeting m15 fvg+... A",A,NO,NO,YES,,,`;
+10-1-24,NQ,10:19:00 PM,Tues,BEAR,Short,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ez8Dz3Dg https://www.tradingview.com/x/YwYNIFuh https://www.tradingview.com/x/Vx96cXM9,"internal smt
+external smt asiah taken on NQ
+std dev rej
+4h OHLC
+1m iob
+
+targeting asial
+
+A BE moved early but bias was good",A,NO,NO,YES,,,
+10-3-24,NQ,3:36:00 AM,Thurs,BEAR,Short,$250,12.5pts,12.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jVMoRXYQ https://www.tradingview.com/x/9Nt0e9wE https://www.tradingview.com/x/XKnafL4o ,"internal smt
+m5 fvg-
+std dev rej
+1m iob
+
+targeting pdl
+
+B",B,NO,YES,YES,,,
+10-3-24,NQ,4:29:00 AM,Thurs,BEAR,Short,-$250,-17.75pts,17.75pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/52SD0qiY https://www.tradingview.com/x/aW3TsLw0 https://www.tradingview.com/x/OOOsaOwz https://www.tradingview.com/x/RYnpa9Gq ,"internal smt
+m15 fvg-
+m5 ob-
+std dev rej
+1h OHLC
+1m iob
+
+targeting m15 ssl
+
+A",A,NO,NO,YES,,,
+10-3-24,NQ,5:41:00 AM,Thurs,BEAR,Short,$250,12.5pts,10.75pts,SMT + IOB m1,1:5,0.50%,YES,https://www.tradingview.com/x/9l9PeSFb https://www.tradingview.com/x/7S9UcfZp https://www.tradingview.com/x/BFaLNdMD,"internal smt m5 high
+std dev rej
+OTE HTF
+m15 fvg-
+1m iob
+
+tagreting m15 ssl
+
+A",A,NO,NO,YES,,,
+10-3-24,NQ,7:21:00 AM,Thurs,BULL,Long,$250,8.25pts,8.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/m9o4e4C2 https://www.tradingview.com/x/YMaakhXq https://www.tradingview.com/x/KMVtTVj7,"internal smt
+std dev rej
+m15 fvg+
+EQ tapped
+1m iob
+
+targeting m15 bsl
+
+A could have hit 1:3",A,NO,NO,YES,,,
+10-3-24,NQ,10:32:00 AM,Thurs,BULL,Long,$250,-52.25pts,52.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/KNfdV1zT https://www.tradingview.com/x/1IUdWZQL https://www.tradingview.com/x/DaiHX9og,"internal smt m15 low
+std dev rej
+OTE HTF
+1h OLHC
+m15 fvg+
+1m iob
+
+targeting m15 bsl
+
+A",A,NO,NO,YES,,,
+10-4-24,NQ,1:52:00 AM,Fri,BULL,Long,-$250,-16.5pts,16.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hO2vfk6s https://www.tradingview.com/x/J1iQkWWU https://www.tradingview.com/x/NtQM3gdv ,"internal smt
+OTE HTF
+OTE MTF
+m15 ob+
+1m iob
+
+targeting m15 bsl
+
+A",A,NO,NO,YES,,,
+10-4-24,NQ,3:50:00 AM,Fri,BULL,Long,-$250,-19.5pts,19.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0oxNxCIM https://www.tradingview.com/x/J8CerPSU https://www.tradingview.com/x/qCVqvQp5 ,"internal smt
+std dev rej golden
+m15 brkr+
+m5 fvg+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-4-24,NQ,5:27:00 AM,Fri,BULL,Long,$250,14.25pts,14.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/AH2pU8Nh https://www.tradingview.com/x/1e9BYFtA  https://www.tradingview.com/x/MEkJdBrl ,"internal smt
+OTE HTF
+m15 ob+
+std dev rej
+1m iob
+
+targeting london high
+
+B",B,NO,NO,YES,,,
+10-8-24,NQ,4:17:00 AM,Tues,BULL,Long,-$250,-23pts,23pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/XUSwXnJI https://www.tradingview.com/x/MxBTYE9O https://www.tradingview.com/x/WucVUJx4 ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-9-24,NQ,1:47:00 AM,Weds,BULL,Long,-$250,-23.5pts,23.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/r22uTGIJ https://www.tradingview.com/x/XXKqXRMv https://www.tradingview.com/x/tFt6PDj8 ,"internal smt
+std dev rej
+OTE HTF
+OTE LTF
+h4 fvg+
+m15 brkr+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-9-24,NQ,2:41:00 AM,Weds,BULL,Long,$250,10.5pts,10.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Eggw2Z4v https://www.tradingview.com/x/0pOLhgFB https://www.tradingview.com/x/C9MAdZvv ,"internal smt
+std dev rej
+30m ob+
+h4 fvg+
+1m iob
+
+targeting m15 bsl
+
+A",A,NO,NO,YES,,,
+10-9-24,NQ,3:33:00 AM,Weds,BULL,Long,$250,20.75pts,20.75pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/pEFbipod https://www.tradingview.com/x/AJAyHHkU https://www.tradingview.com/x/MPTuRow7,"internal smt
+std dev rej
+OTE HTF
+m15 ob+
+h4 fvg+
+1m iob
+
+targeting h1 fvg-
+
+A",A,NO,NO,YES,"BE AND RAN TO FULL TP, BUT FOLLOWED MY RULES",,
+10-9-24,NQ,7:45:00 AM,Weds,BULL,Long,-$250,-17.25pts,17.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JGOZBkJJ https://www.tradingview.com/x/hgTjORzG https://www.tradingview.com/x/f7A5Si7g ,"internal smt
+OTE MTF
+m15 fvg+
+std dev rej
+1m iob
+
+targeting pdh
+
+A",A,NO,NO,YES,,,
+10-9-24,NQ,10:56:00 AM,Weds,BULL,Long,$250,19.75pts,19.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/PSb1zECJ https://www.tradingview.com/x/2CAX4048 https://www.tradingview.com/x/EAPPaYeP ,"internal smt
+std dev rej
+m15 fvg+
+OTE LTF
+1m iob
+
+targeting h4 bsl
+
+A-",A-,NO,NO,YES,,,
+10-11-24,NQ,4:34:00 AM,Fri,BULL,Long,-$250,-21pts,21pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/rj1SeZrq https://www.tradingview.com/x/rE2hKbuA https://www.tradingview.com/x/oMgP6vIB ,"internal smt
+external smt m15 low
+OTE HTF
+1h OLHC
+m15 kebab+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-14-24,NQ,1:53:00 AM,Monday,BULL,Long,$250,8.5pts,8.5pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/gmrblGGH https://www.tradingview.com/x/NYPJFvcM https://www.tradingview.com/x/481S5DF5 ,"internal smt
+m15 fvg+
+std dev rej
+1m iob
+
+targeting asiah
+
+A ",A,NO,NO,NO,,,
+10-14-24,NQ,3:09:00 AM,Monday,BULL,Long,$250,7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DWIexapD https://www.tradingview.com/x/s8p6sRAj https://www.tradingview.com/x/ZErvvZMn,"internal smt
+std dev rej golden
+1h OLHC
+m15 kebab+
+h1 fvg+
+1m iob
+
+targeting asiah
+
+A ",A,NO,NO,YES,,,
+10-14-24,NQ,4:05:00 AM,Monday,BULL,Long,$250,5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/mFkiY12h https://www.tradingview.com/x/K6AyoSKO https://www.tradingview.com/x/jis7iR5w,"internal smt
+m15 fvg+
+std dev rej
+1h OLHC
+1m iob
+
+targeting pdh
+
+A ",A,NO,NO,YES,"BE AND RAN TO FULL TP, BUT FOLLOWED MY RULES",,
+10-14-24,NQ,7:17:00 AM,Monday,BULL,Long,$250,6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hgRKImmx https://www.tradingview.com/x/tF3QH1Uh  ,"internal smtinternal smt
+std dev rej
+m15 fvg+
+1h OLHC
+OTE MTF
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,"BE AND RAN TO FULL TP, BUT FOLLOWED MY RULES",,
+10-14-24,NQ,10:12:00 PM,Monday,BULL,Long,-$250,-5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/c7tHe1xU https://www.tradingview.com/x/IrVIargq https://www.tradingview.com/x/PyQ48xcd,"internal smt
+std dev rej
+EQ MTF
+m15 fvg+
+m15 bkr+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-15-24,NQ,2:36:00 AM,Tues,BULL,Long,$250,7pts,7pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DKUX6mw8 https://www.tradingview.com/x/3nfrdJkI https://www.tradingview.com/x/JsuYBxHm ,"internal smt 2x
+m15 fvg-
+std dev rej
+OTE MTF
+1m iob
+
+targeting m15 fvg-
+
+A",A,NO,NO,YES,,,
+10-15-24,NQ,3:09:00 AM,Tues,BULL,Long,$250,13pts,13pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/oGFBO3jA https://www.tradingview.com/x/UxFyv9Ug https://www.tradingview.com/x/8RYfcNkF ,"internal smt
+external smt asial
+h1 fvg+
+EQ HTF
+1m iob
+
+targeting m15 ob-
+
+A",A,NO,NO,YES,,,
+10-15-24,NQ,4:43:00 AM,Tues,BULL,Long,$250,14.75pts,14.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/RqP1IMBm https://www.tradingview.com/x/XSluglrT https://www.tradingview.com/x/tlsOQYis ,"internal smt
+OTE HTF
+m15 brkr+
+std dev rej
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+10-15-24,NQ,7:23:00 AM,Tues,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wajlG9MP https://www.tradingview.com/x/NFprvUvl https://www.tradingview.com/x/0ZOxt3OV ,"internal smt
+EQ MTF
+std dev rej
+m15 fvg+
+m15 brkr+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-15-24,NQ,10:27:00 AM,Tues,BULL,Long,-$250,-21.25pts,21.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TZJve2GR https://www.tradingview.com/x/mjux0qud https://www.tradingview.com/x/LDB8b9ee ,"internal smt
+external smt london low
+OTE HTF
+m15 ob+
+std dev rej
+1m iob
+
+targeting m15 brkr-
+
+A",A,NO,NO,YES,,,
+10-16-24,NQ,7:57:00 AM,Weds,BULL,Long,-$250,-6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/enLufYC5 https://www.tradingview.com/x/NLNnnUZP https://www.tradingview.com/x/9M6LckUh ,"internal smt
+OTE MTF
+m15 fvg+
+1m iob
+
+targeting london high
+
+A-",A,NO,NO,NO,,,
+10-17-24,NQ,3:26:00 AM,Thurs,BULL,Long,$250,25.75pts,25.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/F2ER4jFx https://www.tradingview.com/x/692sO9JI https://www.tradingview.com/x/20BxLWu0 ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting h1 bsl
+
+A- (too premiumed and eqls 1m at bottom)",A-,NO,YES,NO,,,
+10-17-24,NQ,5:49:00 AM,Thurs,BULL,Long,$250,18.75pts,18.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jsCwTV5v https://www.tradingview.com/x/QZNMvY7v https://www.tradingview.com/x/DDvuXD5D https://www.tradingview.com/x/oFEGdtZS ,"internal smt
+m15 fvg+
+m5 fvg+
+1m iob
+
+targeting h4 fvg- EQ
+
+B (not much confluences and premiumed in a h4 fvg-)",B,NO,NO,NO,,,
+10-17-24,NQ,10:14:00 AM,Thurs,BULL,Long,$250,48pts,48pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/HOIrDVxv https://www.tradingview.com/x/rK25nbUE https://www.tradingview.com/x/NZHO4XdE https://www.tradingview.com/x/HzXVJbbm ,"internal smt
+OTE HTF
+h4 brkr+
+h4 fvg+
+std dev rej golden
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+10-17-24,NQ,10:24:00 PM,Thurs,BULL,Long,$250,8pts,8pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ILc0pokV https://www.tradingview.com/x/joJCVwsg https://www.tradingview.com/x/Odd45BnF https://www.tradingview.com/x/0j5g0XLO,"internal smt
+h4 ob+
+OTE HTF
+OTE LTF
+m15 fvg+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+10-18-24,NQ,5:48:00 AM,Fri,BULL,Long,-$250,-10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/GsU7QGQ9 https://www.tradingview.com/x/ugv85wVc https://www.tradingview.com/x/CDIJ0iDV https://www.tradingview.com/x/cmnlYulP ,"internal smt
+OTE MTF
+h1 fvg+
+5m ob+
+std dev rej 2.5
+1m iob
+
+targeting london high
+
+A- premiumed and internal smt a bit weak",A-,NO,YES,YES,,,
+10-22-24,NQ,2:20:00 AM,Tues,BULL,Long,-$250,-8.5pts,8.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/toXoAVxH https://www.tradingview.com/x/rKVfus3n https://www.tradingview.com/x/7eqpOeAf ,"internal smt
+external smt m15 low
+m15 ob+
+OTE MTF
+1m iob
+
+targeting h1 fvg-
+
+A ",A,NO,NO,YES,,,
+10-22-24,NQ,5:35:00 AM,Tues,BULL,Long,-$250,-18.75pts,18.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/AJPZ4T8l https://www.tradingview.com/x/m15CE7VU https://www.tradingview.com/x/fc4DQOW4 ,"internal smt
+OTE HTF
+m15 ob+
+1m iob
+
+targeting h1 fvg-
+
+B bottom catcher",B,YES,NO,NO,,,
+10-23-24,NQ,4:55:00 AM,Weds,BULL,Long,$250,6.25pts,6.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/NyujRGLz https://www.tradingview.com/x/YhE5CGQ9  https://www.tradingview.com/x/M6KYClLn ,"internal smt
+external smt asial taken on NQ
+OTE HTF
+std dev rej
+h4 fvg+
+h1 ob+ CE
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+10-23-24,NQ,10:20:00 AM,Weds,BULL,Long,$250,47.25pts,47.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/O2wrwCso  https://www.tradingview.com/x/3GHueTVI https://www.tradingview.com/x/atho9pdt https://www.tradingview.com/x/HFQtwfC5 ,"external smt
+internal smt
+pdl taken
+4h OLHC
+1m iob
+
+targeting london high
+
+B",B,NO,NO,YES,,,
+10-22-24,NQ,11:20:00 PM,Thurs,BULL,Long,-$250,-9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/duYWKcyB https://www.tradingview.com/x/k9sVAXmO https://www.tradingview.com/x/s8olCreP,"internal smt
+OTE HTF
+h1 ob+
+m15 brkr+
+1m iob
+
+targeting asiah
+
+B",B,NO,NO,YES,,,
+10-28-24,NQ,12:06:00 AM,Monday,BULL,Long,$250,15pts,15pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZQ5BVu0o https://www.tradingview.com/x/jelMnsck https://www.tradingview.com/x/rZBO6ApO https://www.tradingview.com/x/tjAeWGGe https://www.tradingview.com/x/dX9RifLf,"internal smt
+external smt h4 ssl
+h4 ssl hit
+1m iob
+
+targeting m15 fvg-
+
+B bottom catcher",B,YES,NO,YES,,,
+10-29-24,NQ,3:15:00 AM,Tues,BULL,Long,$250,10pts,10pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/b127XDMH https://www.tradingview.com/x/wJS4o3hW https://www.tradingview.com/x/b4tJxfD6 ,"internal smt
+m15 fvg+
+1m iob
+
+targeting h1 bsl
+
+B too premiumed and lack of confluences",B,NO,YES,NO,,,
+10-29-24,NQ,12:34:00 AM,Tues,BULL,Long,-$250,-15.75pts,15.75pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/6fHKq19S https://www.tradingview.com/x/eVeHUR89 https://www.tradingview.com/x/udM9J42b ,"internal smt
+OTE HTF
+m15 ob+
+std dev rej
+1m iob
+
+targeting asiah
+
+B bottom catcher",B,YES,NO,YES,,,
+10-30-24,NQ,3:05:00 AM,Weds,BULL,Long,$250,13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/fV2XqhNP https://www.tradingview.com/x/4fMl6p5t https://www.tradingview.com/x/pnfyevIZ ,"internal smt
+OTE LTF
+1h OLHC
+m15 fvg+
+1m iob
+
+targeting asiah
+
+B too premiumed",B,NO,YES,YES,,,
+10-30-24,NQ,4:48:00 AM,Weds,BULL,Long,$250,9.25pts,9.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BanxqLDL https://www.tradingview.com/x/ON2tcmbt https://www.tradingview.com/x/HrAVqwtU ,"internal smt
+std dev rej
+OTE HTF
+m15 ob+
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+10-31-24,NQ,1:44:00 AM,Thurs,BEAR,Short,$250,9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/eUhQLME7 https://www.tradingview.com/x/3h8eCRq4 https://www.tradingview.com/x/BRNUI9us ,"internal smt
+m15 ob-
+OTE LTF
+1m iob
+
+targeting h1 ssl
+
+B",B,NO,NO,NO,,,
+10-31-24,NQ,3:43:00 AM,Thurs,BEAR,Short,$250,14pts,14pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/bJLSsPg3 https://www.tradingview.com/x/IBdrmxzO https://www.tradingview.com/x/93FACc7C https://www.tradingview.com/x/dnhy7Xd0,"internal smt
+OTE LTF
+std dev rej
+m15 fvg-
+1m iob
+
+targeting h4 ssl
+
+A",A,NO,NO,YES,,,
+10-31-24,NQ,7:42:00 AM,Thurs,BULL,Long,$250,14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/nbvg0NLg https://www.tradingview.com/x/jeMHjZ5t https://www.tradingview.com/x/Bc0GxDNX ,"internal smt
+m15 fvg+
+1m iob
+
+targeting h1 fvg-
+
+A",A,NO,NO,NO,,,
+11-4-24,NQ,3:12:00 AM,Monday,BULL,Long,-$250,-22.25pts,22.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Mcn3FN7q https://www.tradingview.com/x/bTttRgo3 https://www.tradingview.com/x/RR8rJluEE,"internal smt
+external smt m5 low
+h1 brkr+
+EQ HTF
+h1 fvg+
+1h OLHC
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+11-5-24,NQ,10:36:00 AM,Tues,BULL,Long,-$250,-31pts,31pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/znTQkoRb https://www.tradingview.com/x/MRUyGO7H https://www.tradingview.com/x/Y8phN9bM ,"internal smt 2x
+m15 fvg+
+1m iob
+
+targeting h4 bsl
+
+B premiumed",B,NO,YES,NO,,,
+11-7-24,NQ,2:20:00 AM,Thurs,BULL,Long,-$250,-12.75pts,12.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UmcnodBH https://www.tradingview.com/x/H81kQZW2 https://www.tradingview.com/x/fzYGZw1w ,"internal smt
+EQ HTF tapped
+h1 fvg+
+1m iob
+
+targeting ath
+
+B too premiumed and not too much confluences",B,NO,YES,NO,,,
+11-7-24,NQ,10:11:00 PM,Thurs,BULL,Long,$250,9.25pts,9.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/amwBuFFK https://www.tradingview.com/x/dQGX8WNv https://www.tradingview.com/x/smPRz65B ,"internal smt
+external smt asial taken en ES
+m15 keb+
+std dev rej
+1m iob
+
+targeting asiah/ath
+
+B premiumed and ES looks bearish",B,NO,YES,YES,,,
+11-8-24,NQ,5:58:00 AM,Fri,BULL,Long,-$250,-16pts,16pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/KR10ElDv https://www.tradingview.com/x/gGwmlq4j https://www.tradingview.com/x/eOg3tryE ,"external smt m15 ssl
+internal smt
+h4 fvg+
+std dev rej
+1m iob
+
+targeting m15 fvg-
+
+B bottom catcher",B,YES,NO,YES,,,
+11-8-24,NQ,10:16:00 AM,Fri,BULL,Long,$250,20pts,20pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TfKKpmVH https://www.tradingview.com/x/oeroenST https://www.tradingview.com/x/mzG35wIy ,"internal smt 2x
+OTE HTF
+m15 ob+
+1m iob
+
+targeting NYAM high
+
+A",A,NO,NO,NO,"BE AND RAN TO FULL TP, BUT FOLLOWED MY RULES",,
+11-11-24,NQ,1:19:00 AM,Monday,BULL,Long,-$250,-13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZbFE8R5i https://www.tradingview.com/x/QSL28UUr https://www.tradingview.com/x/JIAqq4Es ,"internal smt
+OTE MTF
+h1 fvg+
+m15 ob+
+std dev rej
+1m iob
+
+targeting asiah / ath
+
+A",A,NO,NO,YES,,,
+11-13-24,NQ,4:31:00 AM,Weds,BULL,Long,-$250,-12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wVm9NhzM https://www.tradingview.com/x/2sqSwPLI https://www.tradingview.com/x/VLSyGKDh ,"internal smt
+m15 fvg+
+m5 fvg+
+1h OLHC
+1m iob
+
+targeting asiah
+
+B too premiumed and missing confluences",B,NO,YES,YES,,,
+11-13-24,NQ,6:14:00 AM,Weds,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qFmx57Nx https://www.tradingview.com/x/qhlGVW0I https://www.tradingview.com/x/Mtkf6x5J ,"internal smt
+OTE HTF
+m15 ob+
+std dev rej
+1m iob
+
+targeting m15 fvg-
+
+A",A,NO,NO,YES,,,
+11-14-24,NQ,1:20:00 AM,Thurs,BULL,Long,$250,10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lmLtlf5o https://www.tradingview.com/x/VpXZhfsS https://www.tradingview.com/x/dV9dPRGd ,"internal smt 2x
+m15 fvg-
+1m iob
+
+targeting pdl
+
+B too little confluences",B,NO,NO,YES,,,
+11-14-24,NQ,5:12:00 AM,Thurs,BULL,Long,$250,11.5pts,11.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/s2wKWWDJ https://www.tradingview.com/x/JQSCUiKe https://www.tradingview.com/x/4pt1vI2I ,"internal smt 2x
+std dev rej
+m15 fvg+
+h1 fvg+
+AMD 1m
+1m iob
+
+targeting london high
+
+A too premiumed ",A,NO,YES,YES,,,
+11-15-24,NQ,7:16:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/wrsRRwsP https://www.tradingview.com/x/VhC3UoQJ https://www.tradingview.com/x/qsu5ZxSq ,"internal smt
+external smt m15 bsl
+EQ HTF
+std dev rej
+m15 ob-
+1m iob
+
+targeting m15 ob+
+
+A",A,NO,NO,YES,,,
+11-18-24,NQ,3:11:00 AM,Monday,BULL,Long,$250,8.75pts,8.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/gZl6fjOW https://www.tradingview.com/x/OrOZxVyy https://www.tradingview.com/x/19JYCM1O ,"internal smt
+std dev rej
+h1/h4 fvg+
+1m iob
+
+targeting london high
+
+B too premiumed bottom catcher",B,YES,YES,NO,,,
+11-21-24,NQ,6:46:00 AM,Thurs,BULL,Long,$250,32pts,32pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BXZvN9nG https://www.tradingview.com/x/yIjIDnCv https://www.tradingview.com/x/brf3kswG ,"internal smt
+m15 fvg+
+1m iob
+
+targeting asiah
+
+B premiumed",B,NO,YES,NO,,,
+11-22-24,NQ,10:23:00 AM,Fri,BULL,Long,-$250,-42.25pts,42.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/mGaVwivq https://www.tradingview.com/x/zOeLuPfz https://www.tradingview.com/x/W8CpYgLc,"internal smt m5 low
+OTE HTF
+h1 ob+
+std dev rej godlen
+1m iob
+
+targeting NYAM high
+
+A-",A-,NO,NO,YES,,,
+11-26-24,NQ,3:17:00 AM,Tues,BULL,Long,-$250,-25.25pts,25.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ENE1krTt https://www.tradingview.com/x/3vW1CHUG https://www.tradingview.com/x/d2mZbaAY ,"internal smt
+external smt m15 low
+h1 fvg+
+1m iob
+
+targeting asiah
+
+A- too premiumed",A-,NO,YES,YES,,,
+11-26-24,NQ,10:45:00 PM,Tues,BULL,Long,-$250,-9.5pts,9.5pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/eLEfBXTT https://www.tradingview.com/x/reEHNQXy https://www.tradingview.com/x/vqmGTF42 https://www.tradingview.com/x/Wg8XLj37,"internal smt
+OTE MTF ~
+m15 ob+
+1m iob
+
+targeting asiah
+
+B",B,NO,NO,NO,,,
+11-27-24,NQ,12:25:00 AM,Weds,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/6RFi0gXL https://www.tradingview.com/x/vAHyLdhj ,"internal smt asial
+EQ HTF
+h1 ob+
+m15 brkr+ ~
+std dev rej
+1m iob
+
+targeting m15 fvg-
+
+A- bottom catcher",A-,YES,NO,YES,,,
+11-27-24,NQ,3:48:00 AM,Weds,BULL,Long,-$250,-18.5pts,18.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8foEK9Mx https://www.tradingview.com/x/mnpPYAtM https://www.tradingview.com/x/IYzE001i,"internal smt
+std dev rej 2.5
+OTE HTF
+m15 ob+
+
+targeting london high
+
+B bottom catcher",B,YES,NO,NO,,,
+12-3-24,NQ,10:33:00 AM,Tues,BULL,Long,-$250,-27.5pts,27.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rrgbsjMh https://www.tradingview.com/x/VTUj2fOY https://www.tradingview.com/x/VWr5ursR ,"internal smt
+m15 ob+
+1m iob
+
+targeting pdh
+
+B not enough confluences",B,NO,NO,NO,,,
+12-4-24,NQ,4:44:00 AM,Thurs,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/03HgHbpy https://www.tradingview.com/x/zxEUeK07 https://www.tradingview.com/x/CEYfHs29 https://www.tradingview.com/x/XJh5EJaI ,"internal smt m5 low
+OTE LTF
+m5 ob+
+std dev rej
+1m iob
+
+targeting ath
+
+B m5 (ath)",B,NO,NO,YES,,,
+12-6-24,NQ,6:50:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xwAKiro6 https://www.tradingview.com/x/1ffg3nNM https://www.tradingview.com/x/cJaWyQ6f https://www.tradingview.com/x/qktfej9q ,"internal smt
+external smt asial taken on ES
+OTE HTF
+m15 keb+
+1m iob
+
+targeting m15 fvg-
+
+B+ bottom catcher good confluences tho",B+,YES,NO,YES,,,
+12-9-24,NQ,3:37:00 AM,Monday,BULL,Long,-$250,-11pts,11pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/u2yJu3Wr https://www.tradingview.com/x/DVuY3BpP https://www.tradingview.com/x/27jb4lfl ,"internal smt
+m15 fvg+
+std dev rej
+1m iob
+
+targeting ath
+
+A 1sec drop so can't BE",A,NO,NO,YES,,,
+12-10-24,NQ,7:18:00 AM,Tues,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/OWvDJAMM https://www.tradingview.com/x/9jA4BIph https://www.tradingview.com/x/xf5Ixcyk ,"internal smt
+m15 fvg+
+1h OLHC
+std dev rej golden
+1m iob
+
+targeting h1 bsl
+
+B too premiumed and bearish HHTF",B,NO,YES,YES,,,
+12-10-24,NQ,11:07:00 PM,Tues,BULL,Long,-$250,-4.75pts,4.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/QNCrfzFL https://www.tradingview.com/x/0KfY9L9N https://www.tradingview.com/x/YPOOmoVd ,"internal smt
+OTE MTF
+m15 ob+
+std dev rej golden
+1h OLHC
+1m iob
+
+targeting asiah
+
+A-",A-,NO,NO,YES,,,
+12-11-24,NQ,12:48:00 AM,Weds,BULL,Long,$250,5.75pts,5.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/skE1WPvf https://www.tradingview.com/x/eTb1RaLk https://www.tradingview.com/x/zvwAjLit ,"internal smt
+std dev rej
+m15 fvg+
+EQ MTF
+1m iob
+
+targeting asiah
+
+A- (not too bulish HTF)",A-,NO,NO,YES,,,
+12-12-24,NQ,5:23:00 AM,Thurs,BULL,Long,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f7hiwV9R https://www.tradingview.com/x/S1B1WtjF https://www.tradingview.com/x/g638Y2LQ ,"internal smt
+external minor smt m5 low
+EQ HTF
+nwog+
+std dev rej 2.5
+1m iob
+
+targeting m15 fvg-
+
+B bottom catcher and tight SL",B,YES,NO,YES,,,
+12-12-24,NQ,7:06:00 AM,Thurs,BULL,Long,-$250,-9.75pts,9.75pts,SMT + IOB m1,1:4,0.50%,YES,https://www.tradingview.com/x/R0Uwaip8 https://www.tradingview.com/x/MzALBS0v https://www.tradingview.com/x/qNtAvIKS ,"internal smt
+external smt m15 low
+OTE HTF
+1h OLHC
+asial taken
+1m iob
+
+targeting london high
+
+B bottom catcher ",B,YES,NO,YES,,,
+12-12-24,NQ,10:30:00 PM,Thurs,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f7hiwV9 https://www.tradingview.com/x/S1B1WtjF https://www.tradingview.com/x/g638Y2LQ ,"internal smt
+external minor smt m5 low
+EQ HTF
+nwog+
+std dev rej 2.5
+1m iob
+
+targeting m15 fvg-
+
+B bottom catcher and tight SL",B,YES,NO,YES,,,
+12-13-24,NQ,2:22:00 AM,Fri,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/kN5XKI52 https://www.tradingview.com/x/XBNXdmfM https://www.tradingview.com/x/jum5NDcz,"internal smt
+m15 fvg+
+1h OLHC
+std dev rej golden
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+12-13-24,NQ,10:13:00 AM,Fri,BULL,Long,-$250,-59pts,59pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/a9pUkeh4 https://www.tradingview.com/x/m6K87oaS https://www.tradingview.com/x/8a0byNJs ,"internal smt
+m15 fvg+
+std dev rej golden
+1m iob
+
+targeting ath
+
+A",A,NO,NO,YES,,,
+12-15-24,NQ,10:23:00 PM,Sun,BULL,Long,$250,6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rouDGILD https://www.tradingview.com/x/gESrd6Lw https://www.tradingview.com/x/5fHMstiC ,"internal smt
+std dev rej golden
+m15 fvg+
+1m iob
+
+targeting ath
+
+B",B,NO,NO,YES,,,
+12-16-24,NQ,12:06:00 AM,Monday,BULL,Long,-$250,-6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UYbl057n https://www.tradingview.com/x/sd4VgtZx https://www.tradingview.com/x/vOvtJuJu ,"internal smt
+OTE MTF
+1h OLHC
+std dev rej
+m15 ob+
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+12-16-24,NQ,6:30:00 AM,Monday,BULL,Long,$250,13.5pts,13.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/fp7uS7oR https://www.tradingview.com/x/baGN0N67 https://www.tradingview.com/x/QmL4X8Po ,"internal smt
+std dev rej golden
+std dev rej
+1h OLHC
+m15 fvg+
+1m iob
+
+targeting ath
+
+A",A,NO,NO,YES,,,
+12-16-24,NQ,10:24:00 AM,Monday,BULL,Long,$250,46.5pts,46.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xWA5Jdkv https://www.tradingview.com/x/kIJUwGda https://www.tradingview.com/x/J6PUAO5t ,"internal smt NYAM low
+h4 fvg+
+h4 OLHC
+5m ob+
+1m iob
+
+targeting ath
+
+A",A,NO,NO,YES,,,
+12-17-24,NQ,12:28:00 AM,Tues,BULL,Long,-$250,-7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8jGbGsgd https://www.tradingview.com/x/wBgrdKjL https://www.tradingview.com/x/Esmqm47o,"internal smt
+std dev rej
+std dev rej golden
+h1 fvg+
+1h OLHC
+1m iob
+
+targeting asiah/ath
+
+A",A,NO,NO,YES,,,
+12-17-24,NQ,6:17:00 AM,Tues,BULL,Long,-$250,-19.5pts,19.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/NHOURpOY https://www.tradingview.com/x/hIXJAGhJ https://www.tradingview.com/x/APHfs6SS,"internal smt
+m15 fvg+
+EQ MTF
+4h OLHC
+1m iob
+
+targeting ath asiah
+
+A",A,NO,NO,YES,,,
+12-17-24,NQ,10:37:00 PM,Tues,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/cuHOwVej https://www.tradingview.com/x/SaJOC0dT https://www.tradingview.com/x/m0wWS3Ws ,"internal smt
+h1 fvg+
+EQ MTF
+4h OLHC
+std dev rej
+1m iob
+
+targeting ath
+
+A",A,NO,NO,YES,,,
+12-18-24,NQ,5:57:00 AM,Weds,BULL,Long,$250,13.75pts,13.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jkggXuEs https://www.tradingview.com/x/UWc6eAKl https://www.tradingview.com/x/vYWmV4sh ,"internal smt
+m15 fvg+
+OTE MTF
+1m iob
+
+targeting ath
+
+A- (too premiumed and not a lot of confluences)",A-,NO,YES,NO,,,
+12-19-24,NQ,4:30:00 AM,Thurs,BULL,Long,$250,17.5pts,17.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/PrkDgweH https://www.tradingview.com/x/o1tCrzic v ,"internal smt 2x
+std dev rej golden
+OTE MTF
+m15 ob+
+1m iob
+
+targeting m15 bsl
+
+B (HTF bearish af)",B,NO,NO,YES,,,
+12-20-24,NQ,2:42:00 AM,Fri,BULL,Long,-$250,-6pts,6pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/V4yJU2zq https://www.tradingview.com/x/nqMAUAug https://www.tradingview.com/x/DdZoITnW ,"internal smt
+OTE MTF
+m15 ob+
+4h OLHC
+1m iob
+
+targeting m15 fvg-
+
+B (bearish HTF)",B,NO,NO,YES,,,
+12-24-24,NQ,4:34:00 AM,Tues,BULL,Long,$250,15.75pts,15.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/QMkPb79g https://www.tradingview.com/x/qp6ZQeg6 https://www.tradingview.com/x/WyHQAmOb ,"internal smt
+m15 fvg+
+std dev rej
+1m iob
+
+targeting h1 bsl
+
+A- too premiumed and too little confluences",A-,NO,YES,NO,,,
+12-24-24,NQ,10:30:00 AM,Tues,BULL,Long,$250,33.25pts,33.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/WNql7jNo https://www.tradingview.com/x/JTGf5mZp https://www.tradingview.com/x/bwxUA2tQ ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting h4 fvg- CE
+
+B too premiumed",B,NO,YES,YES,,,
+12-27-24,NQ,2:08:00 AM,Fri,BEAR,Short,$250,8.25pts,8.25pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/zV8pCoQg https://www.tradingview.com/x/b4zf7jhl https://www.tradingview.com/x/yUYwfoGN https://www.tradingview.com/x/I60BebGy ,"internal smt
+std dev rej golden
+4h OHLC
+m15 fvg-
+1m iob
+
+taregting pdl
+
+A- too discounted",A-,NO,YES,YES,,,
+1-2-25,NQ,3:17:00 AM,Thurs,BEAR,Short,$250,30.25pts,30.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/WhcwJikr https://www.tradingview.com/x/lWSFGiRy https://www.tradingview.com/x/bzsZmK1f ,"internal smt
+std dev rej
+OTE HTF
+h4 ob-
+m15 keb-
+1h OHLC
+1m iob
+
+targeting m15 fvg+
+
+B top catcher",B,YES,NO,YES,,,
+1-3-25,NQ,4:40:00 AM,Fri,BULL,Long,-$250,-14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BG5tfbmE https://www.tradingview.com/x/USTHyIIO https://www.tradingview.com/x/Lync5Xy5 ,"internal smt
+m15 fvg+
+m5 brkr+
+std dev rej
+1m iob
+
+targeting h1 ob-
+
+B (too premiumed and HTF bearish) avoidable AF",B,NO,YES,YES,,avoidable AF,
+1-6-25,NQ,1:24:00 AM,Monday,BULL,Long,$250,11.75pts,11.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/51swrDn9 https://www.tradingview.com/x/SGHoSHPf https://www.tradingview.com/x/lmKeTVOW ,"internal smt
+m15 fvg+
+std dev rej
+1h OLHC
+1m iob
+
+targeting pdh
+
+B (cause liq under and bearish smt asiah)",B,NO,NO,YES,,,
+1-6-25,NQ,10:13:00 AM,Monday,BULL,Long,$250,58.5pts,58.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/pO7WmS9h https://www.tradingview.com/x/gpniXztY https://www.tradingview.com/x/syQz8q3K https://www.tradingview.com/x/DJtvOzmn ,"internal smt
+std dev rej
+m15 fvg+
+4H OLHC
+1m iob
+
+targeting h4 bsl
+
+A- too premiumed",A-,NO,YES,YES,,,
+1-8-25,NQ,10:08:00 AM,Weds,BEAR,Short,$250,54.5pts,54.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/f8UPXcZ2 https://www.tradingview.com/x/YsRUa39N https://www.tradingview.com/x/ZSs3Srvl ,"internal smt
+std dev rej
+m15 fvg-
+h1 fvg-
+OTE HTF
+4h OHLC
+1m iob
+
+targeting h4 ssl
+
+A 1:2 hit tho",A,NO,NO,YES,,1:2 hit,
+1-9-25,NQ,1:15:00 AM,Thurs,BEAR,Short,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/8RrsDkCK https://www.tradingview.com/x/Np0YTXhl https://www.tradingview.com/x/VNB718g2 ,"internal smt
+m15 fvg-
+m15 brkr-
+1h OHLC
+std dev rej
+1m iob
+
+targeting asial
+
+A",A,NO,NO,YES,,,
+1-9-25,NQ,5:50:00 AM,Thurs,BULL,Long,-$250,-15pts,15pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qBCw53cn https://www.tradingview.com/x/q1L2lN52 https://www.tradingview.com/x/noeNJ0Ae ,"internal smt
+m15 fvg+
+m15 brkr+
+1m iob
+
+targeting asiah
+
+B too premiumed no strong DOL",B,NO,YES,YES,,,
+1-9-25,NQ,6:15:00 AM,Thurs,BULL,Long,-$250,-18.5pts,18.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/sGsI1hir https://www.tradingview.com/x/E6y2bBJt https://www.tradingview.com/x/IummT6qX ,"internal smt
+internal smt low m5
+std dev rej
+m15 ob+
+4h OLHC
+1m iob
+
+targeting asiah
+
+A- no strong DOL",A-,NO,NO,YES,,,
+1-13-25,NQ,12:06:00 AM,Monday,BEAR,Short,$250,9pts,9pts,SMT + IOB m1,1:3,0.50%,YES,https://www.tradingview.com/x/POSzbwk8 https://www.tradingview.com/x/9sOOgLLP https://www.tradingview.com/x/F50UV5g3 ,"internal smt
+std dev rej golden
+m15 fvg-
+1h OHLC
+1m iob
+
+targeting asial
+
+A 1:2 hit",A,NO,NO,YES,,1:2 hit,
+1-13-25,NQ,4:44:00 AM,Monday,BEAR,Short,-$250,-33.5pts,33.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/jbElvtwt https://www.tradingview.com/x/r1XeAyTF https://www.tradingview.com/x/jG8s81Vq ,"internal smt
+std dev rej
+m15 fvg-
+1m iob
+
+targeting h4 ssl
+
+A",A,NO,NO,YES,,,
+1-14-25,NQ,12:34:00 AM,Tues,BULL,Long,$250,11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/GCZfKtJs https://www.tradingview.com/x/cLy2e5wc https://www.tradingview.com/x/gUTJ8lXr ,"internal smt
+OTE HTF
+1h OLHC
+m15 fvg+
+std dev rej
+1m iob
+
+targeting asiah
+
+A 1:2 hit",A,NO,NO,YES,,1:2 hit,
+1-15-25,NQ,12:16:00 AM,Weds,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/sia5weEd https://www.tradingview.com/x/CNAcJr3s https://www.tradingview.com/x/DWvozY1Z ,"internal smt
+m15 ob+
+OTE MTF
+1h OLHC
+1m iob
+
+targeting m15 bsl
+
+A- too premiumed",A-,NO,YES,YES,,,
+1-16-25,NQ,1:10:00 AM,Thurs,BULL,Long,$250,24.75pts,24.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/luo73MbK https://www.tradingview.com/x/pzCO5Fax https://www.tradingview.com/x/69hu8jj8 ,"internal smt
+std dev rej
+m15 brkr+
+m15 ob+
+h4 fvg+
+1m iob
+
+targeting asiah
+
+B bottom catcher",B,YES,NO,YES,,,
+1-16-25,NQ,3:34:00 AM,Thurs,BULL,Long,$250,22.25pts,22.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/FaSGJkNb https://www.tradingview.com/x/O8qlDHFq https://www.tradingview.com/x/8QOj2ofQ https://www.tradingview.com/x/XNczQn7A ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting london high
+
+B too premiumed",B,NO,YES,YES,,,
+1-16-25,NQ,6:51:00 AM,Thurs,BULL,Long,-$250,-23.75pts,23.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lyAC4g5x https://www.tradingview.com/x/w1mz5LAQ https://www.tradingview.com/x/YWO3orBz ,"internal smt
+std dev rej
+std dev rej golden
+m15 fvg+
+4h OLHC
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+1-17-25,NQ,2:20:00 AM,Fri,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/BBhCcbxI https://www.tradingview.com/x/YFysQ8cg https://www.tradingview.com/x/BNnvmzbD ,"internal smt
+std dev rej
+m15 brkr+
+m15 fvg+
+OTE HTF
+4h OLHC
+1m iob
+
+targeting m15 bsl
+
+A- bearish HTF",A-,NO,NO,YES,,,
+1-17-25,NQ,4:48:00 AM,Fri,BULL,Long,-$250,-10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zK7v2NIt https://www.tradingview.com/x/76PpVhrr https://www.tradingview.com/x/s0gYXg1Q ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting h1 bsl
+
+B too premiumed and bearish smt HTF",B,NO,YES,YES,,,
+1-17-25,NQ,10:29:00 AM,Fri,BULL,Long,$500,47.25pts,47.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/20ksVdvc https://www.tradingview.com/x/NoCjyQQp https://www.tradingview.com/x/3cp258eO ,"internal smt
+std dev rej
+h1 fvg+
+m15 fvg+
+4h OLHC
+1m iob
+
+targeting NYAM high
+
+A",A,NO,NO,YES,,,
+1-22-25,NQ,1:35:00 AM,Weds,BULL,Long,-$250,-5.75pts,5.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Tk0xcsXh https://www.tradingview.com/x/yk8corp8 https://www.tradingview.com/x/VUrlG9J9 ,"internal smt
+h1 fvg+
+m15 keb+
+EQ HTF
+1m iob
+
+targeting asiah
+
+B too premiumed",B,NO,YES,YES,,,
+1-22-25,NQ,2:05:00 AM,Weds,BULL,Long,$500,7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/l21oNTbb https://www.tradingview.com/x/dkKQE5wq https://www.tradingview.com/x/nnAJzBjx ,"internal smt
+external smt m5 low
+m15 fvg+
+4h OLHC
+std dev rej
+std dev rej golden
+OTE HTF
+1m iob
+
+targeting m15 ob-
+
+A ",A,NO,NO,YES,,,
+1-23-25,NQ,6:20:00 AM,Thurs,BULL,Long,$250,14pts,14pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/kkRe714n https://www.tradingview.com/x/sGJHIFxq https://www.tradingview.com/x/0wCzxk8V ,"internal smt
+OTE MTF
+m15 ob+
+1m iob
+
+targeting h1 fvg-
+
+B bottom catcher",B,YES,NO,YES,,,
+1-24-25,NQ,5:49:00 AM,Fri,BULL,Long,$250,11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/V48x9FBZ https://www.tradingview.com/x/p76hVlae https://www.tradingview.com/x/OKAGDZKs ,"external smt london low
+m15 ob+
+OTE MTF
+1m iob
+
+targeting london high
+
+B (no internal smt)",B,NO,NO,NO,,,
+1-27-25,NQ,3:39:00 AM,Monday,BEAR,Short,$250,44.25pts,44.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lJZnCppl https://www.tradingview.com/x/T0GdcYDq https://www.tradingview.com/x/UuDVSiwl,"internal smt
+std dev rej
+m15 fvg-
+OTE LTF
+1m iob
+
+targeting daily fvg+
+
+A",A,NO,NO,YES,,,
+1-27-25,NQ,10:24:00 AM,Monday,BULL,Long,$250,86pts,86pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0IpI0Wqz https://www.tradingview.com/x/s7ASuz8F https://www.tradingview.com/x/CkZm18Wx ,"internal smt
+st d dev rej
+15m fvg+
+4h OLHC
+1m iob
+
+targeting h4 fvg-
+
+A- too wide SL and bearish HTF",A-,NO,NO,YES,,,
+1-29-25,NQ,12:08:00 PM,Weds,BULL,Long,-$250,-5.5pts,5.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zhUAP17l https://www.tradingview.com/x/gd5WApzR https://www.tradingview.com/x/sqk8g1BD ,"internal smt 2x
+std dev rej
+std dev rej golden
+1h OLHC
+5m ob+
+m15 fvg+
+1m iob
+
+targeting asiah
+
+A- too premiumed ",A-,NO,YES,YES,,,
+1-29-25,NQ,10:25:00 AM,Weds,BULL,Long,-$250,-60.25pts,60.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/cyEfON9K https://www.tradingview.com/x/HuCAM07h https://www.tradingview.com/x/oajgVV7r ,"internal smt
+h4 fvg+
+m15 fvg+
+std dev rej
+EQ HTF
+1m iob
+
+targeting london high
+
+B bottom catcher",B,YES,NO,YES,,,
+1-30-25,NQ,12:46:00 AM,Thurs,BULL,Long,-$250,-14.25pts,14.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/LWSswpsg https://www.tradingview.com/x/xaJIz09n https://www.tradingview.com/x/c8fhjEcK ,"internal smt
+std dev rej golden
+h1 fvg+
+m15 fvg+
+1m iob
+
+targeting pdh
+
+A- too premiumed",A-,NO,YES,YES,,,
+1-30-25,NQ,2:11:00 AM,Thurs,BULL,Long,$250,10.5pts,10.5pts,SMT + IOB m1,1:4,0.50%,YES, https://www.tradingview.com/x/pIYPDJ0A https://www.tradingview.com/x/BemDlIeb https://www.tradingview.com/x/wa29UtZQ ,"internal smt
+std dev rej
+m15 fvg+
+h1 fvg+
+4h OLHC
+1m iob
+
+targeting asiah
+
+B bottom catcher",B,YES,NO,YES,,,
+1-30-25,NQ,11:12:00 PM,Thurs,BULL,Long,-$250,-10.25pts,10.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/DeNfp0YE https://www.tradingview.com/x/PrtbaVyD https://www.tradingview.com/x/I6pxePCS ,"internal smt
+std dev rej
+h1 fvg+
+5m ob+
+EQ HTF
+1m iob
+
+targeting asiah
+
+B setup recycling (after BE so ok)",B,NO,NO,YES,,,
+1-30-25,NQ,11:40:00 PM,Thurs,BULL,Long,-$250,-9pts,9pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rbFgO6IZ https://www.tradingview.com/x/pRaNRDib https://www.tradingview.com/x/XE5i59A9 ,"internal smt
+std dev rej
+1h fvg+
+5m ob+
+EQ HTF
+1m iob
+
+targeting m15 bsl
+
+B bottom catcher and recycling after SL",B,YES,NO,YES,,,
+1-31-25,NQ,2:46:00 AM,Thurs,BULL,Long,-$250,-14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xWfrDv7f https://www.tradingview.com/x/0KXfiuii https://www.tradingview.com/x/Cup6n6mj ,"internal smt
+m15 fvg+
+EQ MTF
+1m iob
+
+targeting london high
+
+A- too premiumed ",A-,NO,YES,YES,,,
+2-3-25,NQ,10:25:00 PM,Monday,BULL,Long,-$250,-20.25pts,20.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/hBFDxvX6 https://www.tradingview.com/x/ehke2k9w https://www.tradingview.com/x/mXvuEi1M ,"internal smt
+std dev rej
+m15 fvg+
+4h OLHC
+OTE HTF
+1h ob+
+1m iob
+
+targeting m15 ob-
+
+A",A,NO,NO,YES,,,
+2-5-25,NQ,10:33:00 PM,Weds,BULL,Long,$250,6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/1t03XMtF https://www.tradingview.com/x/gDaNrMGc https://www.tradingview.com/x/buZhpcr2 ,"internal smt
+m15 ob+
+OTE MTF
+std dev rej
+4h OLHC
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+2-6-25,NQ,1:46:00 AM,Thurs,BULL,Long,-$250,-6.75pts,6.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ZMZXmjjE https://www.tradingview.com/x/NFpzuPrr https://www.tradingview.com/x/9zJ98FMd ,"internal smt
+std dev rej
+std dev rej golden
+m15 fvg+
+1m iob
+
+targeting m15 bsl
+
+A- too premiumed",A-,NO,YES,YES,,,
+2-6-25,NQ,3:05:00 AM,Thurs,BULL,Long,$250,12.25pts,12.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/036Dqrg4 https://www.tradingview.com/x/dDfr6ZSG https://www.tradingview.com/x/jYPFkm5k,"internal smt
+h1 ob+
+OTE HTF
+1h OLHC
+1m iob
+
+targeting london high
+
+A stop at 1:2 cause bearish smt",A,NO,NO,YES,,,
+2-7-25,NQ,4:31:00 AM,Fri,BULL,Long,$250,12.5pts,12.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/VGi9qGwT https://www.tradingview.com/x/e0rKB7AL https://www.tradingview.com/x/rP19MWkX,"internal smt 2x
+OTE HTF
+m15 ob+
+std dev rej
+1h OLHC
+1m iob
+
+targeting london high
+
+A-- recycling setup after SL",A-,NO,NO,YES,,retake of setup,
+2-10-25,NQ,1:40:00 AM,Monday,BULL,Long,-$250,-8.75pts,8.75pts,SMT + IOB m1,1:4,0.50%,YES,https://www.tradingview.com/x/a3DdHtVY https://www.tradingview.com/x/aFzsdV1k https://www.tradingview.com/x/hUYNhLs7 ,"external smt m15 low
+std dev rej
+m15 ob+
+OTE MTF
+1m iob
+
+targeting m15 bsl
+
+B no internal smt",B,NO,NO,YES,,no internal smt,
+2-10-25,NQ,1:58:00 AM,Monday,BULL,Long,-$250,-12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/LhahkKGX https://www.tradingview.com/x/pKeioX9V https://www.tradingview.com/x/VVzcJjHq ,"external smt m15 low
+internal smt
+std dev rej
+m15 ob+
+OTE MTF
+1m iob
+
+targeting m15 bsl
+
+A ",A,NO,NO,YES,,retake of setup,
+2-11-25,NQ,4:49:00 AM,Tues,BULL,Long,-$250,-15.25pts,15.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/CgdJ1oKO https://www.tradingview.com/x/LFj4janC https://www.tradingview.com/x/G4k4lTbI ,"internal smt
+m15 ob+
+OTE MTF
+std dev rej
+1m iob
+
+targeting m15 bsl
+
+A",A,NO,NO,YES,,,
+2-11-25,NQ,10:09:00 AM,Tues,BULL,Long,$250,35pts,35pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/qVupjVkq https://www.tradingview.com/x/FoBNtXfp https://www.tradingview.com/x/jvVmWnzg ,"internal smt
+std dev rej
+m15 fvg+
+h1 brkr+
+1m iob
+
+targeting pdh
+
+A 1:2 hit",A,NO,NO,YES,,1:2 hit,
+2-12-25,NQ,2:29:00 AM,Weds,BULL,Long,$250,8pts,8pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/p4ewMJWu https://www.tradingview.com/x/HCKvQInt https://www.tradingview.com/x/9abzfTjW ,"internal smt
+m15 brkr+
+m15 ob+
+std dev rej
+1m iob
+
+targeting asiah
+
+B bottom catcher continuation 1:2 hit",A,NO,NO,YES,,1:2 hit,
+2-12-25,NQ,10:55:00 AM,Weds,BULL,Long,-$250,-42.5pts,42.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/IhwMsARy https://www.tradingview.com/x/86JymRCA https://www.tradingview.com/x/jw6ah2jt ,"internal smt
+std dev rej
+m15 fvg+
+1m iob
+
+targeting m15 ob-
+
+A- too premiumed",A-,NO,YES,YES,,,
+2-13-25,NQ,1:07:00 AM,Thurs,BULL,Long,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/F4pFWqak https://www.tradingview.com/x/VZndPjqN https://www.tradingview.com/x/xXCvavb5 ,"internal smt
+h1 fvg+
+EQ MTF
+std dev rej golden
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+2-13-25,NQ,5:12:00 AM,Thurs,BULL,Long,$250,22.5pts,22.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JFOcS8Vj https://www.tradingview.com/x/zfohcCw1 https://www.tradingview.com/x/n0Bv3OaP ,"internal smt
+std dev rej
+1h OLHC
+m15 fvg+
+1m iob
+
+targeting london high
+
+A- too premiumed",A-,NO,YES,YES,,,
+2-13-25,NQ,10:39:00 PM,Thurs,BULL,Long,$250,6.5pts,6.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/7Z3rXziB  https://www.tradingview.com/x/VoJScFKt ,"internal smt
+std dev rej
+m15 fvg+
+h1 fvg+
+1m iob
+
+targeting asiah
+
+A- too premiumed and eqls",A-,NO,YES,YES,,,
+2-14-25,NQ,3:21:00 AM,Fri,BULL,Long,-$250,-13.5pts,13.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/P5bFoXZx https://www.tradingview.com/x/ZwHz7aDx https://www.tradingview.com/x/KqlqbqQx ,"external smt m15 low
+std dev rej
+std dev rej golden
+m15 ob+
+OTE MTF
+1m iob
+
+targeting london high
+
+A ",A,NO,NO,YES,,,
+2-17-25,NQ,4:55:00 AM,Monday,BULL,Long,$250,21.5pts,21.5pts,SMT + IOB m1,1:2,0.50%,YES, https://www.tradingview.com/x/D1PpalPO https://www.tradingview.com/x/hJFBcx7b https://www.tradingview.com/x/F2QEzhAA ,"internal smt
+OTE HTF
+m15 fvg+
+4h OLHC
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+2-18-25,NQ,3:56:00 AM,Tues,BULL,Long,$250,14.5pts,14.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/rvyL3vp4 https://www.tradingview.com/x/1nIyKzlr https://www.tradingview.com/x/G3H7eKjE ,"internal smt
+OTE HTF
+h1 fvg+
+m15 fvg+
+std dev rej golden
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+2-18-25,NQ,10:54:00 AM,Tues,BULL,Long,-$250,-52.25pts,52.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/Py5Gq14h https://www.tradingview.com/x/iFEqIaJA https://www.tradingview.com/x/WF6mG4R9 https://www.tradingview.com/x/47pM8S49 ,"internal smt
+OTE HTF
+h4 ob+
+std dev rej
+4h OLHC
+1m iob
+
+targeting m15 fvg-
+
+B bottom catcher",B,YES,NO,YES,,,
+2-18-25,NQ,10:37:00 PM,Tues,BULL,Long,$250,4.75pts,4.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/zcBA0fJ5 https://www.tradingview.com/x/a5VlzVAB https://www.tradingview.com/x/e0mOqBkY ,"internal smt
+m15 fvg +
+std dev rej
+1m iob
+
+targeting m15 bsl
+
+A",A,NO,NO,NO,,,
+2-20-25,NQ,6:13:00 AM,Thurs,BULL,Long,-$250,-7.25pts,7.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/lwPZpz3v https://www.tradingview.com/x/NF9fMLQp https://www.tradingview.com/x/TgF2QSPD ,"internal smt
+m15 fvg+
+EQ MTF
+std dev rej
+1m iob
+
+targeting london high
+
+A",A,NO,NO,YES,,,
+2-21-25,NQ,2:24:00 AM,Fri,BULL,Long,-$250,-7.75pts,7.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/geepoKCd https://www.tradingview.com/x/ExgvbGE5 https://www.tradingview.com/x/AcfzRrFi ,"internal smt
+std dev rej
+h1 brkr+
+m15 fvg+
+4h OLHC
+1m iob
+
+targeting asiah
+
+A ",A,NO,NO,YES,,,
+2-23-25,NQ,10:37:00 PM,Sun,BULL,Long,$250,10pts,10pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TIZPSHb5 https://www.tradingview.com/x/rUQfGuSi https://www.tradingview.com/x/OFnqpOzL ,"internal smt 2x
+std dev rej golden$
+m15 fvg+
+m15 brkr+
+1m iob
+
+targeting asiah
+
+A- too premiumed and bearish HTF",A-,NO,YES,YES,,,
+2-24-25,NQ,12:20:00 AM,Monday,BULL,Long,$250,10.75pts,10.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/SqPa6ysv https://www.tradingview.com/x/L4rYtwZ2 https://www.tradingview.com/x/QLbUelLN ,"internal smt
+std dev rej
+OTE MTF
+m5/m15 ob+
+1m iob
+
+targeting asiah
+
+A- too premiumed and bearish HTF",A-,NO,YES,YES,,,
+2-25-25,NQ,1:58:00 AM,Monday,BULL,Long,-$250,-11pts,11pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/u7F7Bq2z https://www.tradingview.com/x/FN6frQ9A https://www.tradingview.com/x/VfKgrRHW ,"internal smt
+m15 ob+
+OTE MTF
+1m iob
+
+targeting asiah
+
+B timing not good and trend seems to be weaker",B,NO,NO,YES,,timing not good and trend seems to be weaker,
+2-26-25,NQ,5:39:00 AM,Weds,BULL,Long,$250,12pts,12pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/MxY5U9bW https://www.tradingview.com/x/Fo8L3RGL https://www.tradingview.com/x/waLlEmt2 ,"internal smt
+std dev rej golden
+m15 fvg+
+1m iob
+
+targeting m15 fvg-
+
+B too premiumed and bearish HTF just playin the continuation",B,NO,NO,YES,,,
+2-27-25,NQ,10:30:00 AM,Weds,BULL,Long,$250,67pts,67pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/3CV905jp https://www.tradingview.com/x/Ssmt5aid https://www.tradingview.com/x/xtpVOo8C ,"internal smt
+EQ HTF
+m15 fvg-
+std dev rej
+1m iob
+
+targeting NYAM low
+
+B not very good smt",B,NO,NO,YES,,,
+3-6-25,NQ,11:10:00 PM,Thurs,BEAR,Short,$250,9.5pts,9.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/7XzMoZCp https://www.tradingview.com/x/saeRKspY https://www.tradingview.com/x/53r0P8t7 ,"internal smt
+m15 fvg-
+std dev rej
+OTE MTF
+1h OHLC
+1m iob
+
+targeting asial
+
+A 1:2 hit and would have TP",A,NO,NO,YES,,1:2 hit,
+3-10-25,NQ,1:24:00 AM,Monday,BEAR,Short,$250,10.5pts,10.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/eV4hXqN8 https://www.tradingview.com/x/8gEi1MLb https://www.tradingview.com/x/LNqzTDz7 ,"internal smt
+std dev rej
+m15 ob-
+OTE MTF
+4h OHLC
+1m iob
+
+targeting asial
+
+A",A,NO,NO,YES,,,
+3-10-25,NQ,8:54:00 PM,Monday,BEAR,Short,$250,28.75pts,28.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/TGSSPjVE https://www.tradingview.com/x/UKUUShnf https://www.tradingview.com/x/tuTdFI2b ,"internal smt
+m15 fvg-
+OTE HTF
+std dev rej
+1m iob
+
+targeting asial
+
+A ",A,NO,NO,YES,,,
+3-12-25,NQ,7:15:00 AM,Weds,BULL,Long,$250,23.25pts,23.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/xJsAJXLj https://www.tradingview.com/x/9IjYUKux ,"internal smt
+m15 fvg+
+EQ MTF
+1m iob
+
+targeting m15 ob-
+
+B too premiumed",B,NO,YES,YES,,,
+3-17-25,NQ,3:16:00 AM,Monday,BEAR,Short,-$250,-23.5pts,23.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/0q0Ysqi8 https://www.tradingview.com/x/92fJboVO https://www.tradingview.com/x/iaT3AzJV ,"internal smt
+OTE MTF
+h1 ob-
+1m iob
+
+targeting asial
+
+A",A,NO,NO,NO,,,
+3-18-25,NQ,4:43:00 AM,Tues,BULL,Long,-$250,-11.25pts,11.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/UmuveRzT https://www.tradingview.com/x/aYfVtn4Q https://www.tradingview.com/x/gldkBVzF ,"internal smt
+std dev rej 2.5
+m15 fvg+
+OTE HTF
+1m iob
+
+targeting asiah
+
+A",A,NO,NO,YES,,,
+3-20-25,NQ,12:28:00 AM,Thurs,BULL,Long,$250,9.75pts,9.75pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/1uKJu1dT https://www.tradingview.com/x/wdHpZWOf https://www.tradingview.com/x/WZZTtnRb https://www.tradingview.com/x/NAQWbNYR ,"internal smt
+std dev rej
+m15 fvg+
+OTE MTF
+m15 ob+
+1m iob
+
+targeting asiah
+
+A- too premiumed",A-,NO,YES,YES,,,
+3-25-25,NQ,9:10:00 AM,Tues,BULL,Long,$250,54.5pts,54.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/yNm0AATW https://www.tradingview.com/x/7w3fBbtz https://www.tradingview.com/x/4ibteFZL ,"internal smt
+EQ HTF
+h1 fvg+
+4h OLHC
+1m iob
+
+targeting h4 bsl
+
+A",A,NO,NO,YES,,,
+3-25-25,NQ,5:50:00 AM,Fri,BEAR,Short,$250,11.5pts,11.5pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/JlkBgLnB https://www.tradingview.com/x/pSAlGjpN https://www.tradingview.com/x/H3zuiEtA ,"internal smt
+m15 fvg-
+std dev rej
+m15 ob-
+OTE HTF
+1m iob
+
+targeting m15 fvg+",A,NO,NO,YES,,,`;
 
         let trades = [];
-        let sessionChart, equityChart, winrateChart, monteCarloChart;
+        let sessionChart, equityChart, monteCarloChart;
+        let editingTradeId = null;
+        let currentImageIndex = 0; // Carousel state
 
         function init() {
-            const storedTrades = localStorage.getItem('abs_trades_v3');
+            const storedTrades = localStorage.getItem('abs_trades_v6');
             if (storedTrades) {
                 trades = JSON.parse(storedTrades);
             } else {
@@ -390,61 +1728,53 @@
             let startProcessing = false;
 
             for (let i = 0; i < lines.length; i++) {
-                // Skip the header stats block, find the real header
                 if (!startProcessing) {
-                    if (lines[i].startsWith("Date,Asset")) {
-                        startProcessing = true;
-                    }
+                    if (lines[i].startsWith("Date,Asset")) startProcessing = true;
                     continue;
                 }
-
+                
+                // Robust Quote Parsing
                 const row = [];
                 let inQuote = false;
                 let currentStr = "";
-                for(let char of lines[i]) {
-                    if(char === '"') inQuote = !inQuote;
-                    else if(char === ',' && !inQuote) { row.push(currentStr); currentStr = ""; }
-                    else currentStr += char;
+                let line = lines[i];
+                
+                // Handle multiline fields
+                while (line.split('"').length % 2 === 0) { // Odd quote count implies multiline
+                     i++;
+                     if (i >= lines.length) break;
+                     line += "\n" + lines[i];
+                }
+
+                for(let j=0; j<line.length; j++) {
+                    let char = line[j];
+                    if(char === '"') {
+                        inQuote = !inQuote;
+                    } else if(char === ',' && !inQuote) {
+                        row.push(currentStr);
+                        currentStr = "";
+                    } else {
+                        currentStr += char;
+                    }
                 }
                 row.push(currentStr);
-                
+
                 if (row.length < 5) continue;
 
-                // Parse numeric fields
-                let plString = row[6] ? row[6].replace(/[$,"]/g, '') : "0";
-                let pl = parseFloat(plString) || 0;
-                
-                // Note column 15 is Grade (A, B, etc)
-                let grade = row[15] ? row[15].trim() : "N/A";
-                
-                // Determine Session
+                let pl = parseFloat(row[6] ? row[6].replace(/[$,"]/g, '') : "0") || 0;
+                let grade = row[15] ? row[15].trim() : "N/A"; 
                 let session = getSession(row[2]);
+                
+                // Clean Notes/Confirmations (remove quotes)
+                let confirmations = row[14] ? row[14].replace(/^"|"$/g, '').trim() : "";
 
                 parsed.push({
                     id: Date.now() + Math.random(),
-                    date: row[0],
-                    asset: row[1],
-                    time: row[2],
-                    day: row[3],
-                    bias: row[4],
-                    type: row[5],
-                    pl: pl,
-                    pts: row[7],
-                    sl: row[8],
-                    setup: row[9],
-                    rr: row[10],
-                    risk: row[11],
-                    rules: row[12],
-                    screenshot: row[13] || "",
-                    confirmations: row[14] ? row[14].replace(/"/g, '') : "",
-                    grade: grade,
-                    botTop: row[16],
-                    premDisc: row[17],
-                    confluences: row[18],
-                    psy: row[19],
-                    comment: row[20],
-                    lateObs: row[21],
-                    session: session
+                    date: row[0], asset: row[1], time: row[2], day: row[3], bias: row[4], type: row[5],
+                    pl: pl, pts: row[7], sl: row[8], setup: row[9], rr: row[10], risk: row[11],
+                    rules: row[12], screenshot: row[13]||"", confirmations: confirmations, grade: grade,
+                    session: session,
+                    botTop:row[16], premDisc:row[17], confluences:row[18], psy:row[19], comment:row[20], lateObs:row[21]
                 });
             }
             return parsed;
@@ -452,103 +1782,202 @@
 
         function getSession(timeStr) {
             if(!timeStr) return "Unknown";
-            // Normalize time to HHMM integer for easy comparison
-            // Format expected: "10:19:00 PM" or "4:30:00 AM"
             try {
                 let [time, modifier] = timeStr.split(' ');
-                if(!modifier) return "Unknown"; // Handle cases without AM/PM if needed
                 let [hours, minutes] = time.split(':');
-                
                 hours = parseInt(hours);
                 if (hours === 12 && modifier === 'AM') hours = 0;
                 if (hours !== 12 && modifier === 'PM') hours += 12;
+                const val = hours * 100 + parseInt(minutes);
                 
-                const timeVal = hours * 100 + parseInt(minutes);
+                // London: 02:00 - 07:00
+                if (val >= 200 && val < 700) return "London";
+                // NYAM: 10:00 - 12:00
+                if (val >= 1000 && val < 1200) return "NYAM";
+                // NYPM: 14:00 - 17:00
+                if (val >= 1400 && val < 1700) return "NYPM";
+                // Asia: 18:00 - 2400 (or 0000)
+                if (val >= 1800) return "Asia";
+                // Asia (Midnight - 02:00 if needed, technically part of Asia usually, keeping simple based on prompt)
+                if (val < 200) return "Asia"; // Covers 00:00 to 02:00
 
-                // Logic:
-                // Asia: 18:00 - 02:00 (next day) -> >1800 OR <0200
-                // London: 02:00 - 08:00
-                // NYAM: 08:00 - 12:00
-                // NYPM: 12:00 - 17:00
-                
-                if (timeVal >= 1800 || timeVal < 200) return "Asia";
-                if (timeVal >= 200 && timeVal < 800) return "London";
-                if (timeVal >= 800 && timeVal < 1200) return "NYAM";
-                if (timeVal >= 1200 && timeVal < 1700) return "NYPM";
-                return "Other";
+                return "Out of Session";
             } catch(e) { return "Unknown"; }
         }
 
         function saveData() {
-            localStorage.setItem('abs_trades_v3', JSON.stringify(trades));
+            localStorage.setItem('abs_trades_v6', JSON.stringify(trades));
             updateUI();
             runMonteCarlo();
         }
 
-        // --- IMPORT / EXPORT ---
+        // --- CAROUSEL LOGIC ---
+        function updateCarouselFromInput() {
+            const links = document.getElementById('inpLink').value.trim();
+            const images = links ? links.split(' ') : [];
+            renderCarousel(images);
+        }
 
-        function exportToCSV() {
-            // Header matching exactly the input format
-            const header = [
-                "Date","Asset","Entry Time","Day of Week","BIAS","Long/Short","Net P/L","Pts","SL SIZE",
-                "Setup","NET RR","Risk","Rules Followed?","Screenshot","Entry Confirmations / Notes","Note",
-                "bot/top catch","too prem/disc?","enough confluences?","PSYCHOLOGY","Comment","Late Observations"
-            ];
+        function renderCarousel(images) {
+            const container = document.getElementById('carouselContainer');
+            const imgEl = document.getElementById('carouselImage');
+            const txt = document.getElementById('noImageText');
+            const prev = document.getElementById('prevBtn');
+            const next = document.getElementById('nextBtn');
+            const counter = document.getElementById('imageCounter');
 
-            let csvContent = "data:text/csv;charset=utf-8,";
+            if(images.length > 0 && images[0] !== "") {
+                imgEl.src = images[currentImageIndex] || images[0];
+                imgEl.classList.remove('hidden');
+                txt.classList.add('hidden');
+                
+                if(images.length > 1) {
+                    prev.classList.remove('hidden');
+                    next.classList.remove('hidden');
+                    counter.classList.remove('hidden');
+                    counter.innerText = `${currentImageIndex + 1} / ${images.length}`;
+                } else {
+                    prev.classList.add('hidden');
+                    next.classList.add('hidden');
+                    counter.classList.add('hidden');
+                }
+            } else {
+                imgEl.classList.add('hidden');
+                txt.classList.remove('hidden');
+                prev.classList.add('hidden');
+                next.classList.add('hidden');
+                counter.classList.add('hidden');
+            }
+        }
+
+        function nextImage() {
+            const links = document.getElementById('inpLink').value.trim().split(' ');
+            if(links.length <= 1) return;
+            currentImageIndex = (currentImageIndex + 1) % links.length;
+            renderCarousel(links);
+        }
+
+        function prevImage() {
+            const links = document.getElementById('inpLink').value.trim().split(' ');
+            if(links.length <= 1) return;
+            currentImageIndex = (currentImageIndex - 1 + links.length) % links.length;
+            renderCarousel(links);
+        }
+
+        // --- CRUD ---
+        function openModal(tradeId = null) { 
+            document.getElementById('tradeModal').classList.replace('hidden','flex');
+            const form = document.getElementById('tradeForm');
             
-            // Add header
-            csvContent += header.join(",") + "\r\n";
+            if(tradeId) {
+                const t = trades.find(x => x.id === tradeId);
+                editingTradeId = tradeId;
+                document.getElementById('modalTitle').innerText = "Edit Trade";
+                document.getElementById('modalDate').innerText = t.date + " " + t.time;
+                
+                // Fill Form
+                document.getElementById('inpId').value = t.id;
+                
+                // Date
+                const dParts = t.date.split('-');
+                if(dParts.length===3) document.getElementById('inpDate').value = `20${dParts[2]}-${dParts[0].padStart(2,'0')}-${dParts[1].padStart(2,'0')}`;
+                
+                // Time (Convert AM/PM to 24h for input)
+                if(t.time) {
+                    try {
+                        let [time, mod] = t.time.split(' ');
+                        let [h, m] = time.split(':');
+                        h = parseInt(h);
+                        if(mod==='PM' && h!==12) h+=12;
+                        if(mod==='AM' && h===12) h=0;
+                        document.getElementById('inpTime').value = `${h.toString().padStart(2,'0')}:${m}`;
+                    } catch(e){}
+                }
 
-            // Add rows
-            trades.forEach(t => {
-                // Helper to escape commas/quotes
-                const esc = (txt) => {
-                    if (!txt) return "";
-                    let str = String(txt).replace(/"/g, '""'); // Escape double quotes
-                    if (str.includes(",") || str.includes("\n")) return `"${str}"`;
-                    return str;
-                };
+                document.getElementById('inpAsset').value = t.asset;
+                document.getElementById('inpBias').value = t.bias;
+                document.getElementById('inpType').value = t.type;
+                document.getElementById('inpPL').value = t.pl;
+                document.getElementById('inpPts').value = t.pts;
+                document.getElementById('inpSetup').value = t.setup;
+                document.getElementById('inpGrade').value = t.grade;
+                document.getElementById('inpConf').value = t.confirmations;
+                document.getElementById('inpLink').value = t.screenshot;
 
-                const row = [
-                    esc(t.date), esc(t.asset), esc(t.time), esc(t.day), esc(t.bias), esc(t.type), 
-                    t.pl, esc(t.pts), esc(t.sl), esc(t.setup), esc(t.rr), esc(t.risk), esc(t.rules),
-                    esc(t.screenshot), esc(t.confirmations), esc(t.grade), 
-                    esc(t.botTop), esc(t.premDisc), esc(t.confluences), esc(t.psy), esc(t.comment), esc(t.lateObs)
-                ];
-                csvContent += row.join(",") + "\r\n";
-            });
+                // Hidden Fields preserve
+                document.getElementById('inpDay').value = t.day;
+                document.getElementById('inpSession').value = t.session;
+                // ... (Other hidden fields mapped if strictly needed for preservation)
 
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "abs_trades_export.csv");
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+                // Init Carousel
+                currentImageIndex = 0;
+                updateCarouselFromInput();
+
+            } else {
+                editingTradeId = null;
+                document.getElementById('modalTitle').innerText = "Add New Trade";
+                document.getElementById('modalDate').innerText = "New Entry";
+                form.reset();
+                currentImageIndex = 0;
+                updateCarouselFromInput();
+            }
         }
 
-        function importCSVFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const text = e.target.result;
-                    const newTrades = parseCSV(text);
-                    if (newTrades.length > 0) {
-                        if(confirm(`Imported ${newTrades.length} trades. Replace existing data?`)) {
-                            trades = newTrades;
-                            saveData();
-                        }
-                    } else { alert('No valid trades found.'); }
-                } catch(err) { alert('Error parsing file'); }
+        function closeModal() { document.getElementById('tradeModal').classList.replace('flex','hidden'); }
+        
+        function deleteCurrentTrade() {
+            if(editingTradeId && confirm('Delete?')) {
+                trades = trades.filter(t => t.id !== editingTradeId);
+                saveData();
+                closeModal();
+            }
+        }
+
+        document.getElementById('tradeForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            const dInput = document.getElementById('inpDate').value;
+            const dObj = new Date(dInput);
+            const formattedDate = `${dObj.getMonth()+1}-${dObj.getDate()+1}-${dObj.getFullYear().toString().substr(-2)}`;
+            
+            const timeVal = document.getElementById('inpTime').value; 
+            let timeStr = "00:00:00 AM";
+            if(timeVal) {
+                let [h, m] = timeVal.split(':'); let s = h>=12?"PM":"AM"; h=h%12||12;
+                timeStr = `${h}:${m}:00 ${s}`;
+            }
+
+            const newTrade = {
+                id: editingTradeId || Date.now(),
+                date: formattedDate,
+                time: timeStr,
+                asset: document.getElementById('inpAsset').value,
+                bias: document.getElementById('inpBias').value,
+                type: document.getElementById('inpType').value,
+                pl: parseFloat(document.getElementById('inpPL').value),
+                pts: document.getElementById('inpPts').value,
+                setup: document.getElementById('inpSetup').value,
+                grade: document.getElementById('inpGrade').value,
+                screenshot: document.getElementById('inpLink').value,
+                confirmations: document.getElementById('inpConf').value,
+                day: ['Sun','Monday','Tues','Weds','Thurs','Fri','Sat'][dObj.getDay()],
+                session: getSession(timeStr),
+                // Default fill for missing legacy fields
+                sl: "", rr: "", risk: "0.50%", rules: "YES", botTop: "", premDisc: "", confluences: "", psy: "", comment: "", lateObs: ""
             };
-            reader.readAsText(file);
-        }
 
-        // --- UI & CHARTS ---
+            if(editingTradeId) {
+                const idx = trades.findIndex(t => t.id === editingTradeId);
+                // Merge to keep legacy data safe
+                trades[idx] = { ...trades[idx], ...newTrade };
+            } else {
+                trades.unshift(newTrade);
+            }
+            saveData();
+            closeModal();
+        });
 
+        // --- UI & STATS ---
         function updateUI() {
             const total = trades.length;
             const wins = trades.filter(t => t.pl > 0).length;
@@ -561,52 +1990,52 @@
             document.getElementById('profit-factor').textContent = `PF: ${grossLoss>0?(grossProfit/grossLoss).toFixed(2):"∞"}`;
             document.getElementById('winrate-badge').textContent = `WR: ${total>0?((wins/total)*100).toFixed(1):0}%`;
 
+            calculateMonthlyProjection();
             renderCharts();
             renderTable();
             renderGrades();
         }
 
+        function calculateMonthlyProjection() {
+            const rValueInput = parseFloat(document.getElementById('inputRValue').value) || 0;
+            const losses = trades.filter(t => t.pl < 0).map(t => t.pl);
+            const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((a,b)=>a+b,0)/losses.length) : 250; 
+            const monthlyR = {};
+            trades.forEach(t => {
+                const dateParts = t.date.split('-'); 
+                const key = dateParts[0] + '-' + dateParts[2]; 
+                if(!monthlyR[key]) monthlyR[key] = 0;
+                monthlyR[key] += (t.pl / avgLoss);
+            });
+            const months = Object.values(monthlyR);
+            const avgMonthlyR = months.length > 0 ? months.reduce((a,b)=>a+b,0) / months.length : 0;
+            document.getElementById('avg-monthly-r').textContent = `${avgMonthlyR.toFixed(1)}R`;
+            const projected = avgMonthlyR * rValueInput;
+            const elProj = document.getElementById('projected-monthly-gain');
+            elProj.textContent = `$${projected.toLocaleString(undefined, {minimumFractionDigits:2})}`;
+            elProj.className = `text-xl font-bold ${projected >= 0 ? 'text-success' : 'text-danger'}`;
+        }
+
         function renderCharts() {
-            // 1. Equity
             const reversed = [...trades].reverse();
             let balance = 0;
-            const equityData = reversed.map(t => { balance += t.pl; return balance; });
+            const eqData = reversed.map(t => { balance += t.pl; return balance; });
             
             if(equityChart) equityChart.destroy();
             equityChart = new Chart(document.getElementById('equityChart'), {
                 type: 'line',
-                data: { labels: reversed.map(t=>t.date), datasets: [{ data: equityData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill:true, pointRadius:0 }] },
+                data: { labels: reversed.map(t=>t.date), datasets: [{ data: eqData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill:true, pointRadius:0 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#334155'}}} }
             });
 
-            // 2. Win/Loss Distribution
-            if(winrateChart) winrateChart.destroy();
-            const w = trades.filter(t=>t.pl>0).length;
-            const l = trades.filter(t=>t.pl<0).length;
-            const be = trades.filter(t=>t.pl===0).length;
-            winrateChart = new Chart(document.getElementById('winrateChart'), {
-                type: 'doughnut',
-                data: { labels: ['Win','Loss','BE'], datasets: [{ data: [w,l,be], backgroundColor: ['#10b981','#ef4444','#64748b'], borderWidth:0 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{position:'right'}}, cutout:'70%' }
-            });
-
-            // 3. Session Performance
             if(sessionChart) sessionChart.destroy();
-            const sessions = { Asia:0, London:0, NYAM:0, NYPM:0 };
+            const sessions = { Asia:0, London:0, NYAM:0, NYPM:0, "Out of Session":0 };
             trades.forEach(t => { if(sessions[t.session] !== undefined) sessions[t.session] += t.pl; });
-            
             sessionChart = new Chart(document.getElementById('sessionChart'), {
                 type: 'bar',
-                data: {
-                    labels: Object.keys(sessions),
-                    datasets: [{ data: Object.values(sessions), backgroundColor: Object.values(sessions).map(v => v>=0?'#10b981':'#ef4444'), borderRadius:4 }]
-                },
+                data: { labels: Object.keys(sessions), datasets: [{ data: Object.values(sessions), backgroundColor: Object.values(sessions).map(v => v>=0?'#10b981':'#ef4444'), borderRadius:4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}}, scales:{y:{grid:{color:'#334155'}}, x:{grid:{display:false}}} }
             });
-            
-            // Update text stats for session
-            const statsDiv = document.getElementById('session-stats');
-            statsDiv.innerHTML = Object.keys(sessions).map(k => `<div>${k}: <span class="${sessions[k]>=0?'text-success':'text-danger'}">$${sessions[k]}</span></div>`).join('');
         }
 
         function renderTable() {
@@ -614,15 +2043,11 @@
             tbody.innerHTML = '';
             trades.forEach(t => {
                 const row = document.createElement('tr');
-                row.className = "bg-card border-b border-gray-800 hover:bg-gray-800 transition";
-                const plClass = t.pl > 0 ? 'text-success' : (t.pl < 0 ? 'text-danger' : 'text-gray-400');
+                row.className = "bg-card border-b border-gray-800 trade-row hover:bg-gray-800 transition";
+                row.onclick = () => openModal(t.id);
                 
-                // Handle multiple screenshots (split by space)
-                let links = '-';
-                if(t.screenshot) {
-                    const urls = t.screenshot.split(' ');
-                    links = urls.map((u, i) => `<a href="${u}" target="_blank" class="text-accent hover:text-white mx-1"><i class="fa-solid fa-image"></i></a>`).join('');
-                }
+                const plClass = t.pl > 0 ? 'text-success' : (t.pl < 0 ? 'text-danger' : 'text-gray-400');
+                let imgIcon = t.screenshot ? '<i class="fa-solid fa-image text-accent"></i>' : '-';
 
                 row.innerHTML = `
                     <td class="px-4 py-3 whitespace-nowrap">${t.date}</td>
@@ -631,14 +2056,13 @@
                     <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold ${t.bias==='BULL'?'bg-blue-900 text-blue-300':'bg-orange-900 text-orange-300'}">${t.bias}</span></td>
                     <td class="px-4 py-3">${t.setup} <span class="text-xs text-gray-500">(${t.grade})</span></td>
                     <td class="px-4 py-3 text-right font-mono font-bold ${plClass}">$${t.pl}</td>
-                    <td class="px-4 py-3 text-center">${links}</td>
-                    <td class="px-4 py-3 truncate max-w-[150px]" title="${t.confirmations}">${t.confirmations}</td>
-                    <td class="px-4 py-3 text-center"><button onclick="deleteTrade(${t.id})" class="text-gray-600 hover:text-danger"><i class="fa-solid fa-trash"></i></button></td>
+                    <td class="px-4 py-3 text-center">${imgIcon}</td>
+                    <td class="px-4 py-3 truncate max-w-[100px] text-xs text-gray-400">${t.confirmations.substring(0,25)}...</td>
                 `;
                 tbody.appendChild(row);
             });
         }
-        
+
         function renderGrades() {
             const stats = {};
             trades.forEach(t => {
@@ -646,147 +2070,109 @@
                 if(!stats[g]) stats[g] = {count:0, wins:0, pl:0};
                 stats[g].count++; stats[g].pl += t.pl; if(t.pl>0) stats[g].wins++;
             });
-            const body = document.getElementById('grade-table-body');
-            body.innerHTML = Object.keys(stats).sort().map(g => {
+            document.getElementById('grade-table-body').innerHTML = Object.keys(stats).sort().map(g => {
                 const s = stats[g];
                 return `<tr class="border-b border-gray-700"><td class="py-2 font-bold text-white">${g}</td><td class="py-2 text-right ${s.pl>0?'text-success':'text-danger'}">$${s.pl.toFixed(0)}</td><td class="py-2 text-right">${((s.wins/s.count)*100).toFixed(0)}%</td></tr>`
             }).join('');
         }
 
-        // --- CRUD ---
-        function openModal() { document.getElementById('tradeModal').classList.replace('hidden','flex'); }
-        function closeModal() { document.getElementById('tradeModal').classList.replace('flex','hidden'); }
-        
-        document.getElementById('tradeForm').addEventListener('submit', (e) => {
-            e.preventDefault();
-            // Simple Add Logic - Calculates day and session
-            const d = new Date(document.getElementById('inpDate').value);
-            const days = ['Sun','Monday','Tues','Weds','Thurs','Fri','Sat'];
-            const timeVal = document.getElementById('inpTime').value; // "14:30"
+        // --- MONTE CARLO TIME BASED ---
+        function runMonteCarlo() {
+            const riskPercent = parseFloat(document.getElementById('riskSlider').value);
+            const startBal = 50000;
+            const riskAmount = startBal * (riskPercent / 100);
+            document.getElementById('riskDisplayPercent').innerText = riskPercent.toFixed(2) + "%";
+            document.getElementById('riskDisplayValue').innerText = "$" + riskAmount.toFixed(0);
+
+            const wins = trades.filter(t=>t.pl>0).length;
+            const losses = trades.filter(t=>t.pl<0).length;
+            if((wins+losses) === 0) return;
+
+            const winRate = wins / (wins+losses);
+            const avgWin = trades.filter(t=>t.pl>0).reduce((a,b)=>a+b.pl,0)/wins || 0;
+            const avgLoss = Math.abs(trades.filter(t=>t.pl<0).reduce((a,b)=>a+b.pl,0)/losses) || 0;
             
-            // Convert time to "2:30:00 PM" format for consistency
-            let timeStr = "00:00:00 AM";
-            if(timeVal) {
-                let [h, m] = timeVal.split(':');
-                let suffix = h >= 12 ? "PM" : "AM";
-                h = h % 12 || 12;
-                timeStr = `${h}:${m}:00 ${suffix}`;
+            const SIMS = 1000, TARGET = 53000, MAX_DD = 2000, MAX_DAILY_LOSS = 1000, CAP = 1500;
+            let results = [], allCurves = [];
+
+            for(let i=0; i<SIMS; i++) {
+                let balance = startBal, hwm = startBal, active = true, passed = false;
+                let tradingDays = 0, totalDays = 0, curve = [startBal];
+                
+                while(active && tradingDays < 60) {
+                    tradingDays++; totalDays++;
+                    if(tradingDays % 5 === 0) totalDays += 2;
+
+                    let dailyPL = 0;
+                    let tradesToday = Math.floor(Math.random() * 3) + 1;
+                    for(let t=0; t<tradesToday; t++) {
+                        let isWin = Math.random() < winRate;
+                        let pnl = isWin ? (riskAmount * (avgWin/avgLoss)) : -riskAmount;
+                        dailyPL += pnl;
+                    }
+                    if(dailyPL <= -MAX_DAILY_LOSS) { active = false; break; }
+                    if(dailyPL > CAP) dailyPL = CAP;
+
+                    balance += dailyPL;
+                    if(balance > hwm) hwm = balance;
+                    if(balance < hwm - MAX_DD) active = false;
+                    curve.push(balance);
+                    if(balance >= TARGET) { passed = true; active = false; }
+                }
+                results.push({ passed, totalDays, finalBalance: balance });
+                if(i < 100) allCurves.push(curve);
             }
 
-            const t = {
-                id: Date.now(),
-                date: `${d.getMonth()+1}-${d.getDate()+1}-${d.getFullYear().toString().substr(-2)}`, // Simple format fix
-                asset: document.getElementById('inpAsset').value,
-                time: timeStr,
-                day: days[d.getDay()],
-                bias: document.getElementById('inpBias').value,
-                type: document.getElementById('inpType').value,
-                pl: parseFloat(document.getElementById('inpPL').value),
-                pts: document.getElementById('inpPts').value,
-                setup: document.getElementById('inpSetup').value,
-                grade: document.getElementById('inpGrade').value,
-                screenshot: document.getElementById('inpLink').value,
-                confirmations: document.getElementById('inpConf').value,
-                session: getSession(timeStr),
-                // Defaults for empty fields
-                sl: "", rr: "", risk: "0.50%", rules: "YES", botTop: "", premDisc: "", confluences: "", psy: "", comment: "", lateObs: ""
-            };
-            trades.unshift(t);
-            saveData();
-            closeModal();
-        });
+            const passedRuns = results.filter(r => r.passed);
+            const passRate = (passedRuns.length / SIMS) * 100;
+            document.getElementById('sim-pass-rate').innerText = passRate.toFixed(1) + "%";
+            document.getElementById('sim-pass-rate').className = `text-2xl font-bold ${passRate>50?'text-success':'text-danger'}`;
 
-        function deleteTrade(id) {
-            if(confirm('Delete trade?')) { trades = trades.filter(t=>t.id!==id); saveData(); }
+            passedRuns.sort((a,b) => a.totalDays - b.totalDays);
+            
+            let bestTime="--", medTime="--", worstTime="--", avgTime="--";
+            if (passedRuns.length > 0) {
+                bestTime = passedRuns[0].totalDays + "d";
+                worstTime = passedRuns[passedRuns.length - 1].totalDays + "d";
+                medTime = passedRuns[Math.floor(passedRuns.length / 2)].totalDays + "d";
+                avgTime = (passedRuns.reduce((a,b)=>a+b.totalDays,0)/passedRuns.length).toFixed(1) + "d";
+            }
+
+            document.getElementById('scen-best-time').innerText = bestTime;
+            document.getElementById('scen-med-time').innerText = medTime;
+            document.getElementById('scen-avg-time').innerText = avgTime;
+            document.getElementById('scen-worst-time').innerText = worstTime;
+
+            if(monteCarloChart) monteCarloChart.destroy();
+            monteCarloChart = new Chart(document.getElementById('monteCarloChart'), {
+                type: 'line',
+                data: { labels: Array.from({length:30}, (_,i)=>i+1), datasets: allCurves.slice(0,30).map(c => ({ data: c, borderColor: c[c.length-1]>=TARGET ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.1)', borderWidth: 1, pointRadius: 0 })) },
+                options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#334155'}}} }
+            });
+        }
+
+        function exportToCSV() {
+            const header = ["Date","Asset","Entry Time","Day of Week","BIAS","Long/Short","Net P/L","Pts","SL SIZE","Setup","NET RR","Risk","Rules Followed?","Screenshot","Entry Confirmations / Notes","Note","bot/top catch","too prem/disc?","enough confluences?","PSYCHOLOGY","Comment","Late Observations"];
+            let csv = "data:text/csv;charset=utf-8," + header.join(",") + "\r\n";
+            trades.forEach(t => {
+                const esc = (x) => `"${String(x||"").replace(/"/g,'""')}"`;
+                const row = [esc(t.date),esc(t.asset),esc(t.time),esc(t.day),esc(t.bias),esc(t.type),t.pl,esc(t.pts),esc(t.sl),esc(t.setup),esc(t.rr),esc(t.risk),esc(t.rules),esc(t.screenshot),esc(t.confirmations),esc(t.grade),esc(t.botTop),esc(t.premDisc),esc(t.confluences),esc(t.psy),esc(t.comment),esc(t.lateObs)];
+                csv += row.join(",") + "\r\n";
+            });
+            const link = document.createElement("a"); link.href = encodeURI(csv); link.download = "abs_trades.csv"; document.body.appendChild(link); link.click(); link.remove();
+        }
+
+        function importCSVFile(input) {
+            const file = input.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) { try { trades = parseCSV(e.target.result); saveData(); alert('Imported!'); } catch(e){ alert('Error'); } };
+            reader.readAsText(file);
         }
 
         document.getElementById('search').addEventListener('keyup', (e) => {
             const term = e.target.value.toLowerCase();
-            document.querySelectorAll('#trades-table-body tr').forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none';
-            });
+            document.querySelectorAll('#trades-table-body tr').forEach(row => { row.style.display = row.innerText.toLowerCase().includes(term) ? '' : 'none'; });
         });
-
-        // --- MONTE CARLO ---
-        function runMonteCarlo() {
-            const risk = parseFloat(document.getElementById('riskSlider').value);
-            document.getElementById('riskDisplay').innerText = risk.toFixed(2) + "%";
-            
-            const wins = trades.filter(t=>t.pl>0).length;
-            const losses = trades.filter(t=>t.pl<0).length;
-            const total = wins+losses;
-            if(total === 0) return;
-
-            const winRate = wins/total;
-            const avgWin = trades.filter(t=>t.pl>0).reduce((a,b)=>a+b.pl,0)/wins || 0;
-            const avgLoss = Math.abs(trades.filter(t=>t.pl<0).reduce((a,b)=>a+b.pl,0)/losses) || 0;
-            
-            // Simulation
-            const SIMS = 500;
-            const START = 50000;
-            const TARGET = 53000;
-            const MAX_DD = 2000;
-            const MAX_DAILY_LOSS = 1000;
-            
-            let passed = 0;
-            let totalDays = 0;
-            let curves = [];
-
-            for(let i=0; i<SIMS; i++) {
-                let balance = START;
-                let hwm = START;
-                let days = 0;
-                let curve = [START];
-                let active = true;
-                
-                while(active && days < 60) {
-                    days++;
-                    // 1-3 trades per day random
-                    let tradesToday = Math.floor(Math.random() * 3) + 1;
-                    let dailyPL = 0;
-                    
-                    for(let t=0; t<tradesToday; t++) {
-                        let isWin = Math.random() < winRate;
-                        // Risk is % of 50k static for Eval usually
-                        let riskAmt = 50000 * (risk/100); 
-                        let pnl = isWin ? (riskAmt * (avgWin/avgLoss)) : -riskAmt;
-                        dailyPL += pnl;
-                    }
-                    
-                    // Daily Loss Rule
-                    if(dailyPL <= -MAX_DAILY_LOSS) { active = false; break; }
-                    
-                    // Cap Daily Win (1500 rule)
-                    if(dailyPL > 1500) dailyPL = 1500;
-                    
-                    balance += dailyPL;
-                    if(balance > hwm) hwm = balance;
-                    
-                    // Trailing Drawdown
-                    if(balance < hwm - MAX_DD) active = false;
-                    
-                    curve.push(balance);
-                    if(balance >= TARGET) { passed++; totalDays += days; active = false; }
-                }
-                if(i < 50) curves.push(curve); // Store first 50 for chart
-            }
-
-            document.getElementById('sim-pass-rate').innerText = ((passed/SIMS)*100).toFixed(1) + "%";
-            document.getElementById('sim-avg-days').innerText = passed>0 ? (totalDays/passed).toFixed(1) : "-";
-            
-            // Chart Monte Carlo
-            if(monteCarloChart) monteCarloChart.destroy();
-            monteCarloChart = new Chart(document.getElementById('monteCarloChart'), {
-                type: 'line',
-                data: {
-                    labels: Array.from({length:30}, (_,i)=>i+1),
-                    datasets: curves.map(c => ({
-                        data: c, borderColor: c[c.length-1]>=TARGET ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.1)', borderWidth:1, pointRadius:0
-                    }))
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#334155'}}} }
-            });
-        }
 
         init();
     </script>
