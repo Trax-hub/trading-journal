@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ABS Manager - Carousel & Full Data</title>
+    <title>ABS Manager - Fullscreen Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,20 +27,19 @@
     <style>
         body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
         .glass-panel { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
-        .modal-backdrop { background: rgba(0, 0, 0, 0.9); backdrop-filter: blur(8px); }
+        /* Modal Fullscreen Override */
+        .modal-backdrop { background: #0f172a; } 
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
         
-        /* Table Interaction */
         .trade-row:hover { background-color: #2d3748; cursor: pointer; }
         
-        /* Carousel Styles */
-        .carousel-img { max-height: 500px; width: auto; object-fit: contain; border-radius: 8px; }
-        .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; padding: 10px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+        .carousel-img { max-height: 80vh; width: auto; object-fit: contain; }
+        .nav-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.6); color: white; padding: 15px; border-radius: 50%; cursor: pointer; transition: 0.2s; font-size: 20px; }
         .nav-btn:hover { background: rgba(59, 130, 246, 0.8); }
-        .prev-btn { left: 10px; }
-        .next-btn { right: 10px; }
+        .prev-btn { left: 20px; }
+        .next-btn { right: 20px; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -51,7 +50,7 @@
             <i class="fa-solid fa-layer-group text-accent text-2xl"></i>
             <div>
                 <h1 class="text-xl font-bold tracking-wide text-white">ABS <span class="text-accent">MANAGER</span></h1>
-                <p class="text-xs text-gray-500">Full Data • Image Carousel • Custom Sessions</p>
+                <p class="text-xs text-gray-500">Session WR% • Fullscreen Mode</p>
             </div>
         </div>
         <div class="flex gap-3">
@@ -126,7 +125,7 @@
                     <div class="relative h-56 w-full"><canvas id="equityChart"></canvas></div>
                 </div>
                 <div class="glass-panel rounded-xl p-6 shadow-lg">
-                    <h3 class="text-text text-sm font-medium uppercase mb-4">Session P/L</h3>
+                    <h3 class="text-text text-sm font-medium uppercase mb-4">Session Win Rate %</h3>
                     <div class="relative h-56 w-full"><canvas id="sessionChart"></canvas></div>
                 </div>
             </div>
@@ -134,7 +133,7 @@
             <!-- Trade Table -->
             <div class="glass-panel rounded-xl p-6 shadow-lg overflow-hidden flex-1 min-h-[400px]">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-text text-sm font-medium uppercase">Trade Log <span class="text-xs text-gray-500 ml-2">(Click to view details & images)</span></h3>
+                    <h3 class="text-text text-sm font-medium uppercase">Trade Log <span class="text-xs text-gray-500 ml-2">(Click row for Fullscreen Edit)</span></h3>
                     <input type="text" id="search" placeholder="Search notes..." class="bg-dark border border-gray-700 text-white text-xs rounded px-3 py-1 focus:border-accent outline-none w-64">
                 </div>
                 <div class="overflow-x-auto max-h-[500px]">
@@ -201,97 +200,108 @@
         </div>
     </main>
 
-    <!-- DETAILED TRADE MODAL -->
-    <div id="tradeModal" class="fixed inset-0 modal-backdrop hidden items-center justify-center z-50 p-4">
-        <div class="bg-card border border-gray-700 rounded-xl shadow-2xl w-full max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
-            
-            <!-- Modal Header -->
-            <div class="flex justify-between items-center p-5 border-b border-gray-700 bg-gray-800">
+    <!-- FULLSCREEN TRADE MODAL -->
+    <div id="tradeModal" class="fixed inset-0 z-50 hidden bg-dark flex flex-col">
+        
+        <!-- Header (Toolbar) -->
+        <div class="h-16 border-b border-gray-700 bg-gray-800 px-6 flex justify-between items-center shadow-md">
+            <div class="flex items-center gap-4">
+                <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-white transition"><i class="fa-solid fa-arrow-left text-xl"></i></button>
                 <div>
-                    <h2 class="text-xl font-bold text-white" id="modalTitle">Trade Details</h2>
-                    <span id="modalDate" class="text-xs text-gray-400 font-mono">--</span>
-                </div>
-                <div class="flex gap-3">
-                    <button type="button" onclick="deleteCurrentTrade()" class="text-danger hover:bg-red-900/20 px-3 py-1 rounded text-sm"><i class="fa-solid fa-trash mr-2"></i>Delete</button>
-                    <button type="button" onclick="closeModal()" class="text-gray-400 hover:text-white px-3 py-1"><i class="fa-solid fa-xmark text-xl"></i></button>
+                    <h2 class="text-lg font-bold text-white tracking-wide" id="modalTitle">Trade Details</h2>
+                    <p id="modalDate" class="text-xs text-gray-500 font-mono">--</p>
                 </div>
             </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="deleteCurrentTrade()" class="bg-red-900/30 text-danger hover:bg-red-900/50 px-4 py-2 rounded text-sm font-medium transition"><i class="fa-solid fa-trash mr-2"></i>Delete</button>
+                <button type="submit" form="tradeForm" class="bg-success hover:bg-green-600 text-white px-6 py-2 rounded text-sm font-bold shadow-lg transition"><i class="fa-solid fa-save mr-2"></i>Save Changes</button>
+            </div>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
             
-            <div class="flex-1 overflow-y-auto flex flex-col lg:flex-row">
-                
-                <!-- Left: Image Carousel -->
-                <div class="lg:w-1/2 bg-black flex flex-col justify-center items-center relative min-h-[300px] border-b lg:border-b-0 lg:border-r border-gray-700 p-4">
-                    <div id="carouselContainer" class="relative w-full h-full flex items-center justify-center">
-                        <img id="carouselImage" src="" class="carousel-img hidden">
-                        <p id="noImageText" class="text-gray-600 text-sm">No Screenshot Available</p>
-                        
-                        <!-- Nav Buttons -->
-                        <button id="prevBtn" class="nav-btn prev-btn hidden" onclick="prevImage()"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button id="nextBtn" class="nav-btn next-btn hidden" onclick="nextImage()"><i class="fa-solid fa-chevron-right"></i></button>
+            <!-- Left: Big Image Carousel -->
+            <div class="lg:w-3/5 bg-black flex flex-col justify-center items-center relative h-1/2 lg:h-full border-b lg:border-b-0 lg:border-r border-gray-700">
+                <div id="carouselContainer" class="relative w-full h-full flex items-center justify-center p-4">
+                    <img id="carouselImage" src="" class="carousel-img hidden shadow-2xl">
+                    <div id="noImageText" class="text-gray-600 flex flex-col items-center">
+                        <i class="fa-solid fa-image text-4xl mb-2 opacity-50"></i>
+                        <span>No Screenshot Available</span>
                     </div>
-                    <div id="imageCounter" class="text-xs text-gray-500 mt-2 hidden">1 / 1</div>
+                    
+                    <!-- Nav Buttons -->
+                    <button id="prevBtn" class="nav-btn prev-btn hidden" onclick="prevImage()"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button id="nextBtn" class="nav-btn next-btn hidden" onclick="nextImage()"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
+                <div id="imageCounter" class="absolute bottom-4 bg-gray-800/80 px-3 py-1 rounded-full text-xs text-white hidden">1 / 1</div>
+            </div>
 
-                <!-- Right: Form Data -->
-                <div class="lg:w-1/2 p-6 bg-card overflow-y-auto">
-                    <form id="tradeForm" class="space-y-5">
-                        <input type="hidden" id="inpId">
+            <!-- Right: Form Data -->
+            <div class="lg:w-2/5 bg-card overflow-y-auto h-1/2 lg:h-full">
+                <form id="tradeForm" class="p-8 space-y-6 max-w-3xl mx-auto">
+                    <input type="hidden" id="inpId">
 
-                        <!-- Key Stats -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Net P/L</label>
-                            <input type="number" id="inpPL" step="0.01" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-lg font-bold focus:border-accent outline-none"></div>
-                            
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Points</label>
-                            <input type="text" id="inpPts" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
+                    <!-- Key Metrics Card -->
+                    <div class="bg-dark/50 p-4 rounded-lg border border-gray-700/50 grid grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Net P/L</label>
+                            <input type="number" id="inpPL" step="0.01" class="w-full bg-transparent text-3xl font-bold text-white focus:outline-none placeholder-gray-700" placeholder="0.00">
                         </div>
-
-                        <!-- Details Grid -->
-                        <div class="grid grid-cols-2 gap-4">
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Entry Time</label>
-                            <input type="time" id="inpTime" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
-
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Date</label>
-                            <input type="date" id="inpDate" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
-
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Bias</label>
-                            <select id="inpBias" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>BULL</option><option>BEAR</option></select></div>
-
-                            <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Type</label>
-                            <select id="inpType" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>Long</option><option>Short</option></select></div>
+                        <div>
+                            <label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Points</label>
+                            <input type="text" id="inpPts" class="w-full bg-transparent text-xl font-mono text-accent focus:outline-none" placeholder="0pts">
                         </div>
+                    </div>
 
-                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Setup</label>
-                        <input type="text" id="inpSetup" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"></div>
-                        
-                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Grade</label>
-                        <select id="inpGrade" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm"><option>A</option><option>A-</option><option>B+</option><option>B</option><option>C</option><option>N/A</option></select></div>
+                    <!-- Meta Data -->
+                    <div class="grid grid-cols-2 gap-5">
+                        <div><label class="label-sm">Entry Time</label><input type="time" id="inpTime" class="input-field"></div>
+                        <div><label class="label-sm">Date</label><input type="date" id="inpDate" class="input-field"></div>
+                        <div><label class="label-sm">Bias</label><select id="inpBias" class="input-field"><option>BULL</option><option>BEAR</option></select></div>
+                        <div><label class="label-sm">Type</label><select id="inpType" class="input-field"><option>Long</option><option>Short</option></select></div>
+                    </div>
 
-                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Confirmations / Notes (Full Text)</label>
-                        <textarea id="inpConf" rows="8" class="w-full bg-dark border border-gray-600 rounded p-2 text-white text-sm font-mono leading-relaxed"></textarea></div>
+                    <!-- Setup Info -->
+                    <div class="grid grid-cols-3 gap-5">
+                        <div class="col-span-2"><label class="label-sm">Setup Name</label><input type="text" id="inpSetup" class="input-field"></div>
+                        <div><label class="label-sm">Grade</label><select id="inpGrade" class="input-field"><option>A</option><option>A-</option><option>B+</option><option>B</option><option>C</option><option>N/A</option></select></div>
+                    </div>
 
-                        <div><label class="block text-[10px] uppercase text-gray-500 font-bold mb-1">Screenshot Links (Space separated)</label>
-                        <input type="text" id="inpLink" class="w-full bg-dark border border-gray-600 rounded p-2 text-accent text-xs" oninput="updateCarouselFromInput()"></div>
-                        
-                        <!-- Hidden fields for data integrity -->
-                        <div class="hidden">
-                           <input type="text" id="inpAsset"><input type="text" id="inpDay"><input type="text" id="inpSession">
-                           <input type="text" id="inpSl"><input type="text" id="inpRr"><input type="text" id="inpRisk">
-                           <input type="text" id="inpRules"><input type="text" id="inpBotTop"><input type="text" id="inpPremDisc">
-                           <input type="text" id="inpConfluences"><input type="text" id="inpPsy"><input type="text" id="inpComment"><input type="text" id="inpLateObs">
-                        </div>
+                    <!-- Large Notes Area -->
+                    <div>
+                        <label class="label-sm">Confirmations / Notes</label>
+                        <textarea id="inpConf" rows="12" class="w-full bg-dark border border-gray-600 rounded p-3 text-gray-300 text-sm font-mono leading-relaxed focus:border-accent outline-none resize-none"></textarea>
+                    </div>
 
-                        <div class="pt-4 flex justify-end">
-                             <button type="submit" class="w-full bg-success hover:bg-green-600 text-white font-bold py-3 rounded shadow-lg transition">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
+                    <!-- Image Links -->
+                    <div>
+                        <label class="label-sm">Screenshot Links <span class="text-[10px] font-normal normal-case text-gray-500">(Space separated)</span></label>
+                        <input type="text" id="inpLink" class="input-field text-accent text-xs" oninput="updateCarouselFromInput()">
+                    </div>
+                    
+                    <!-- Hidden fields preservation -->
+                    <div class="hidden">
+                        <input type="text" id="inpAsset"><input type="text" id="inpDay"><input type="text" id="inpSession">
+                        <input type="text" id="inpSl"><input type="text" id="inpRr"><input type="text" id="inpRisk">
+                        <input type="text" id="inpRules"><input type="text" id="inpBotTop"><input type="text" id="inpPremDisc">
+                        <input type="text" id="inpConfluences"><input type="text" id="inpPsy"><input type="text" id="inpComment"><input type="text" id="inpLateObs">
+                    </div>
+                </form>
+                <!-- Bottom Padding -->
+                <div class="h-20"></div>
             </div>
         </div>
     </div>
 
+    <style>
+        .label-sm { display: block; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: bold; margin-bottom: 4px; }
+        .input-field { width: 100%; background-color: #0f172a; border: 1px solid #475569; border-radius: 0.375rem; padding: 0.5rem; color: white; font-size: 0.875rem; outline: none; transition: border-color 0.2s; }
+        .input-field:focus { border-color: #3b82f6; }
+    </style>
+
     <script>
-        // --- FULL DATASET FROM USER ---
+        // --- FULL DATASET ---
         const initialCsvData = `Date,Asset,Entry Time,Day of Week,BIAS,Long/Short,Net P/L,Pts,SL SIZE,Setup,NET RR,Risk,Rules Followed?,Screenshot,Entry Confirmations / Notes,Note,bot/top catch,too prem/disc?,enough confluences?,PSYCHOLOGY,Comment,Late Observations
 10-1-24,NQ,10:19:00 PM,Tues,BEAR,Short,$250,13.25pts,13.25pts,SMT + IOB m1,1:2,0.50%,YES,https://www.tradingview.com/x/ez8Dz3Dg https://www.tradingview.com/x/YwYNIFuh https://www.tradingview.com/x/Vx96cXM9,"internal smt
 external smt asiah taken on NQ
@@ -1708,10 +1718,10 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
         let trades = [];
         let sessionChart, equityChart, monteCarloChart;
         let editingTradeId = null;
-        let currentImageIndex = 0; // Carousel state
+        let currentImageIndex = 0;
 
         function init() {
-            const storedTrades = localStorage.getItem('abs_trades_v6');
+            const storedTrades = localStorage.getItem('abs_trades_v7');
             if (storedTrades) {
                 trades = JSON.parse(storedTrades);
             } else {
@@ -1733,29 +1743,21 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
                     continue;
                 }
                 
-                // Robust Quote Parsing
-                const row = [];
+                let row = [];
                 let inQuote = false;
                 let currentStr = "";
                 let line = lines[i];
                 
-                // Handle multiline fields
-                while (line.split('"').length % 2 === 0) { // Odd quote count implies multiline
-                     i++;
-                     if (i >= lines.length) break;
+                while (line.split('"').length % 2 === 0) { 
+                     i++; if (i >= lines.length) break;
                      line += "\n" + lines[i];
                 }
 
                 for(let j=0; j<line.length; j++) {
                     let char = line[j];
-                    if(char === '"') {
-                        inQuote = !inQuote;
-                    } else if(char === ',' && !inQuote) {
-                        row.push(currentStr);
-                        currentStr = "";
-                    } else {
-                        currentStr += char;
-                    }
+                    if(char === '"') inQuote = !inQuote;
+                    else if(char === ',' && !inQuote) { row.push(currentStr); currentStr = ""; }
+                    else currentStr += char;
                 }
                 row.push(currentStr);
 
@@ -1764,8 +1766,6 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
                 let pl = parseFloat(row[6] ? row[6].replace(/[$,"]/g, '') : "0") || 0;
                 let grade = row[15] ? row[15].trim() : "N/A"; 
                 let session = getSession(row[2]);
-                
-                // Clean Notes/Confirmations (remove quotes)
                 let confirmations = row[14] ? row[14].replace(/^"|"$/g, '').trim() : "";
 
                 parsed.push({
@@ -1790,28 +1790,28 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
                 if (hours !== 12 && modifier === 'PM') hours += 12;
                 const val = hours * 100 + parseInt(minutes);
                 
-                // London: 02:00 - 07:00
+                // 2AM - 7AM: London
                 if (val >= 200 && val < 700) return "London";
-                // NYAM: 10:00 - 12:00
+                // 10AM - 12PM: NYAM
                 if (val >= 1000 && val < 1200) return "NYAM";
-                // NYPM: 14:00 - 17:00
+                // 2PM - 5PM: NYPM (1400-1700)
                 if (val >= 1400 && val < 1700) return "NYPM";
-                // Asia: 18:00 - 2400 (or 0000)
+                // 6PM - 12PM (Midnight): Asia (1800-0000)
+                // Also handling 00:00 to 02:00 as "Asia" continuity or Out? Prompt says 6PM-12PM
                 if (val >= 1800) return "Asia";
-                // Asia (Midnight - 02:00 if needed, technically part of Asia usually, keeping simple based on prompt)
-                if (val < 200) return "Asia"; // Covers 00:00 to 02:00
-
+                if (val < 200) return "Asia"; // Midnight to 2am often considered Asia continuation
+                
                 return "Out of Session";
             } catch(e) { return "Unknown"; }
         }
 
         function saveData() {
-            localStorage.setItem('abs_trades_v6', JSON.stringify(trades));
+            localStorage.setItem('abs_trades_v7', JSON.stringify(trades));
             updateUI();
             runMonteCarlo();
         }
 
-        // --- CAROUSEL LOGIC ---
+        // --- CAROUSEL ---
         function updateCarouselFromInput() {
             const links = document.getElementById('inpLink').value.trim();
             const images = links ? links.split(' ') : [];
@@ -1819,7 +1819,6 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
         }
 
         function renderCarousel(images) {
-            const container = document.getElementById('carouselContainer');
             const imgEl = document.getElementById('carouselImage');
             const txt = document.getElementById('noImageText');
             const prev = document.getElementById('prevBtn');
@@ -1832,31 +1831,22 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
                 txt.classList.add('hidden');
                 
                 if(images.length > 1) {
-                    prev.classList.remove('hidden');
-                    next.classList.remove('hidden');
-                    counter.classList.remove('hidden');
+                    prev.classList.remove('hidden'); next.classList.remove('hidden'); counter.classList.remove('hidden');
                     counter.innerText = `${currentImageIndex + 1} / ${images.length}`;
                 } else {
-                    prev.classList.add('hidden');
-                    next.classList.add('hidden');
-                    counter.classList.add('hidden');
+                    prev.classList.add('hidden'); next.classList.add('hidden'); counter.classList.add('hidden');
                 }
             } else {
-                imgEl.classList.add('hidden');
-                txt.classList.remove('hidden');
-                prev.classList.add('hidden');
-                next.classList.add('hidden');
-                counter.classList.add('hidden');
+                imgEl.classList.add('hidden'); txt.classList.remove('hidden');
+                prev.classList.add('hidden'); next.classList.add('hidden'); counter.classList.add('hidden');
             }
         }
-
         function nextImage() {
             const links = document.getElementById('inpLink').value.trim().split(' ');
             if(links.length <= 1) return;
             currentImageIndex = (currentImageIndex + 1) % links.length;
             renderCarousel(links);
         }
-
         function prevImage() {
             const links = document.getElementById('inpLink').value.trim().split(' ');
             if(links.length <= 1) return;
@@ -1864,32 +1854,24 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
             renderCarousel(links);
         }
 
-        // --- CRUD ---
+        // --- MODAL ---
         function openModal(tradeId = null) { 
-            document.getElementById('tradeModal').classList.replace('hidden','flex');
-            const form = document.getElementById('tradeForm');
-            
+            document.getElementById('tradeModal').classList.remove('hidden');
             if(tradeId) {
                 const t = trades.find(x => x.id === tradeId);
                 editingTradeId = tradeId;
                 document.getElementById('modalTitle').innerText = "Edit Trade";
                 document.getElementById('modalDate').innerText = t.date + " " + t.time;
                 
-                // Fill Form
                 document.getElementById('inpId').value = t.id;
                 
-                // Date
                 const dParts = t.date.split('-');
                 if(dParts.length===3) document.getElementById('inpDate').value = `20${dParts[2]}-${dParts[0].padStart(2,'0')}-${dParts[1].padStart(2,'0')}`;
                 
-                // Time (Convert AM/PM to 24h for input)
                 if(t.time) {
                     try {
-                        let [time, mod] = t.time.split(' ');
-                        let [h, m] = time.split(':');
-                        h = parseInt(h);
-                        if(mod==='PM' && h!==12) h+=12;
-                        if(mod==='AM' && h===12) h=0;
+                        let [time, mod] = t.time.split(' '); let [h, m] = time.split(':'); h = parseInt(h);
+                        if(mod==='PM' && h!==12) h+=12; if(mod==='AM' && h===12) h=0;
                         document.getElementById('inpTime').value = `${h.toString().padStart(2,'0')}:${m}`;
                     } catch(e){}
                 }
@@ -1904,190 +1886,129 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
                 document.getElementById('inpConf').value = t.confirmations;
                 document.getElementById('inpLink').value = t.screenshot;
 
-                // Hidden Fields preserve
-                document.getElementById('inpDay').value = t.day;
-                document.getElementById('inpSession').value = t.session;
-                // ... (Other hidden fields mapped if strictly needed for preservation)
-
-                // Init Carousel
                 currentImageIndex = 0;
                 updateCarouselFromInput();
-
             } else {
                 editingTradeId = null;
                 document.getElementById('modalTitle').innerText = "Add New Trade";
-                document.getElementById('modalDate').innerText = "New Entry";
-                form.reset();
+                document.getElementById('tradeForm').reset();
                 currentImageIndex = 0;
                 updateCarouselFromInput();
             }
         }
 
-        function closeModal() { document.getElementById('tradeModal').classList.replace('flex','hidden'); }
-        
-        function deleteCurrentTrade() {
-            if(editingTradeId && confirm('Delete?')) {
-                trades = trades.filter(t => t.id !== editingTradeId);
-                saveData();
-                closeModal();
-            }
-        }
+        function closeModal() { document.getElementById('tradeModal').classList.add('hidden'); }
+        function deleteCurrentTrade() { if(editingTradeId && confirm('Delete?')) { trades = trades.filter(t => t.id !== editingTradeId); saveData(); closeModal(); } }
 
         document.getElementById('tradeForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            
             const dInput = document.getElementById('inpDate').value;
             const dObj = new Date(dInput);
             const formattedDate = `${dObj.getMonth()+1}-${dObj.getDate()+1}-${dObj.getFullYear().toString().substr(-2)}`;
-            
             const timeVal = document.getElementById('inpTime').value; 
             let timeStr = "00:00:00 AM";
             if(timeVal) {
                 let [h, m] = timeVal.split(':'); let s = h>=12?"PM":"AM"; h=h%12||12;
                 timeStr = `${h}:${m}:00 ${s}`;
             }
-
             const newTrade = {
                 id: editingTradeId || Date.now(),
-                date: formattedDate,
-                time: timeStr,
+                date: formattedDate, time: timeStr,
                 asset: document.getElementById('inpAsset').value,
-                bias: document.getElementById('inpBias').value,
-                type: document.getElementById('inpType').value,
-                pl: parseFloat(document.getElementById('inpPL').value),
-                pts: document.getElementById('inpPts').value,
-                setup: document.getElementById('inpSetup').value,
-                grade: document.getElementById('inpGrade').value,
-                screenshot: document.getElementById('inpLink').value,
-                confirmations: document.getElementById('inpConf').value,
+                bias: document.getElementById('inpBias').value, type: document.getElementById('inpType').value,
+                pl: parseFloat(document.getElementById('inpPL').value), pts: document.getElementById('inpPts').value,
+                setup: document.getElementById('inpSetup').value, grade: document.getElementById('inpGrade').value,
+                screenshot: document.getElementById('inpLink').value, confirmations: document.getElementById('inpConf').value,
                 day: ['Sun','Monday','Tues','Weds','Thurs','Fri','Sat'][dObj.getDay()],
                 session: getSession(timeStr),
-                // Default fill for missing legacy fields
                 sl: "", rr: "", risk: "0.50%", rules: "YES", botTop: "", premDisc: "", confluences: "", psy: "", comment: "", lateObs: ""
             };
-
-            if(editingTradeId) {
-                const idx = trades.findIndex(t => t.id === editingTradeId);
-                // Merge to keep legacy data safe
-                trades[idx] = { ...trades[idx], ...newTrade };
-            } else {
-                trades.unshift(newTrade);
-            }
-            saveData();
-            closeModal();
+            if(editingTradeId) { const idx = trades.findIndex(t => t.id === editingTradeId); trades[idx] = { ...trades[idx], ...newTrade }; }
+            else { trades.unshift(newTrade); }
+            saveData(); closeModal();
         });
 
-        // --- UI & STATS ---
+        // --- UI ---
         function updateUI() {
-            const total = trades.length;
             const wins = trades.filter(t => t.pl > 0).length;
             const grossProfit = trades.filter(t => t.pl > 0).reduce((a,b)=>a+b.pl,0);
             const grossLoss = Math.abs(trades.filter(t => t.pl < 0).reduce((a,b)=>a+b.pl,0));
-            const netProfit = grossProfit - grossLoss;
-
-            document.getElementById('total-profit').textContent = `$${netProfit.toLocaleString(undefined,{minimumFractionDigits:2})}`;
-            document.getElementById('total-profit').className = `text-4xl font-bold mt-2 ${netProfit>=0?'text-success':'text-danger'}`;
+            const net = grossProfit - grossLoss;
+            document.getElementById('total-profit').textContent = `$${net.toLocaleString(undefined,{minimumFractionDigits:2})}`;
+            document.getElementById('total-profit').className = `text-4xl font-bold mt-2 ${net>=0?'text-success':'text-danger'}`;
             document.getElementById('profit-factor').textContent = `PF: ${grossLoss>0?(grossProfit/grossLoss).toFixed(2):"∞"}`;
-            document.getElementById('winrate-badge').textContent = `WR: ${total>0?((wins/total)*100).toFixed(1):0}%`;
-
+            document.getElementById('winrate-badge').textContent = `WR: ${trades.length>0?((wins/trades.length)*100).toFixed(1):0}%`;
             calculateMonthlyProjection();
-            renderCharts();
-            renderTable();
-            renderGrades();
+            renderCharts(); renderTable(); renderGrades();
         }
 
         function calculateMonthlyProjection() {
-            const rValueInput = parseFloat(document.getElementById('inputRValue').value) || 0;
+            const rVal = parseFloat(document.getElementById('inputRValue').value) || 0;
             const losses = trades.filter(t => t.pl < 0).map(t => t.pl);
             const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((a,b)=>a+b,0)/losses.length) : 250; 
             const monthlyR = {};
             trades.forEach(t => {
-                const dateParts = t.date.split('-'); 
-                const key = dateParts[0] + '-' + dateParts[2]; 
-                if(!monthlyR[key]) monthlyR[key] = 0;
-                monthlyR[key] += (t.pl / avgLoss);
+                const key = t.date.split('-')[0] + '-' + t.date.split('-')[2];
+                if(!monthlyR[key]) monthlyR[key] = 0; monthlyR[key] += (t.pl / avgLoss);
             });
-            const months = Object.values(monthlyR);
-            const avgMonthlyR = months.length > 0 ? months.reduce((a,b)=>a+b,0) / months.length : 0;
-            document.getElementById('avg-monthly-r').textContent = `${avgMonthlyR.toFixed(1)}R`;
-            const projected = avgMonthlyR * rValueInput;
-            const elProj = document.getElementById('projected-monthly-gain');
-            elProj.textContent = `$${projected.toLocaleString(undefined, {minimumFractionDigits:2})}`;
-            elProj.className = `text-xl font-bold ${projected >= 0 ? 'text-success' : 'text-danger'}`;
+            const vals = Object.values(monthlyR);
+            const avg = vals.length > 0 ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+            document.getElementById('avg-monthly-r').textContent = `${avg.toFixed(1)}R`;
+            const proj = avg * rVal;
+            document.getElementById('projected-monthly-gain').textContent = `$${proj.toLocaleString(undefined, {minimumFractionDigits:2})}`;
+            document.getElementById('projected-monthly-gain').className = `text-xl font-bold ${proj>=0?'text-success':'text-danger'}`;
         }
 
         function renderCharts() {
-            const reversed = [...trades].reverse();
-            let balance = 0;
-            const eqData = reversed.map(t => { balance += t.pl; return balance; });
-            
+            // Equity
+            const rev = [...trades].reverse(); let bal = 0; const data = rev.map(t => { bal+=t.pl; return bal; });
             if(equityChart) equityChart.destroy();
             equityChart = new Chart(document.getElementById('equityChart'), {
-                type: 'line',
-                data: { labels: reversed.map(t=>t.date), datasets: [{ data: eqData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill:true, pointRadius:0 }] },
+                type: 'line', data: { labels: rev.map(t=>t.date), datasets: [{ data: data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill:true, pointRadius:0 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}}, scales:{x:{display:false}, y:{grid:{color:'#334155'}}} }
             });
 
+            // Session WR
             if(sessionChart) sessionChart.destroy();
-            const sessions = { Asia:0, London:0, NYAM:0, NYPM:0, "Out of Session":0 };
-            trades.forEach(t => { if(sessions[t.session] !== undefined) sessions[t.session] += t.pl; });
+            const stats = { "London":{w:0,t:0}, "NYAM":{w:0,t:0}, "NYPM":{w:0,t:0}, "Asia":{w:0,t:0}, "Out of Session":{w:0,t:0} };
+            trades.forEach(t => { if(stats[t.session]) { stats[t.session].t++; if(t.pl>0) stats[t.session].w++; } });
+            const labels = Object.keys(stats);
+            const wrData = labels.map(k => stats[k].t>0 ? ((stats[k].w/stats[k].t)*100) : 0);
+            
             sessionChart = new Chart(document.getElementById('sessionChart'), {
                 type: 'bar',
-                data: { labels: Object.keys(sessions), datasets: [{ data: Object.values(sessions), backgroundColor: Object.values(sessions).map(v => v>=0?'#10b981':'#ef4444'), borderRadius:4 }] },
-                options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}}, scales:{y:{grid:{color:'#334155'}}, x:{grid:{display:false}}} }
+                data: { 
+                    labels: labels.map((k, i) => `${k} (${stats[k].t})`), 
+                    datasets: [{ data: wrData, backgroundColor: wrData.map(v => v>=50?'#10b981':v>=40?'#f59e0b':'#ef4444'), borderRadius:4 }] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: {legend:{display:false}}, scales:{y:{grid:{color:'#334155'}, max:100}, x:{grid:{display:false}}} }
             });
         }
 
         function renderTable() {
-            const tbody = document.getElementById('trades-table-body');
-            tbody.innerHTML = '';
+            const tbody = document.getElementById('trades-table-body'); tbody.innerHTML = '';
             trades.forEach(t => {
-                const row = document.createElement('tr');
-                row.className = "bg-card border-b border-gray-800 trade-row hover:bg-gray-800 transition";
+                const row = document.createElement('tr'); row.className = "bg-card border-b border-gray-800 trade-row transition";
                 row.onclick = () => openModal(t.id);
-                
-                const plClass = t.pl > 0 ? 'text-success' : (t.pl < 0 ? 'text-danger' : 'text-gray-400');
-                let imgIcon = t.screenshot ? '<i class="fa-solid fa-image text-accent"></i>' : '-';
-
-                row.innerHTML = `
-                    <td class="px-4 py-3 whitespace-nowrap">${t.date}</td>
-                    <td class="px-4 py-3 text-xs text-gray-400">${t.time}</td>
-                    <td class="px-4 py-3 text-xs font-bold text-gray-300">${t.session}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold ${t.bias==='BULL'?'bg-blue-900 text-blue-300':'bg-orange-900 text-orange-300'}">${t.bias}</span></td>
-                    <td class="px-4 py-3">${t.setup} <span class="text-xs text-gray-500">(${t.grade})</span></td>
-                    <td class="px-4 py-3 text-right font-mono font-bold ${plClass}">$${t.pl}</td>
-                    <td class="px-4 py-3 text-center">${imgIcon}</td>
-                    <td class="px-4 py-3 truncate max-w-[100px] text-xs text-gray-400">${t.confirmations.substring(0,25)}...</td>
-                `;
+                row.innerHTML = `<td class="px-4 py-3 whitespace-nowrap">${t.date}</td><td class="px-4 py-3 text-xs text-gray-400">${t.time}</td><td class="px-4 py-3 text-xs font-bold text-gray-300">${t.session}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded text-[10px] font-bold ${t.bias==='BULL'?'bg-blue-900 text-blue-300':'bg-orange-900 text-orange-300'}">${t.bias}</span></td><td class="px-4 py-3">${t.setup} <span class="text-xs text-gray-500">(${t.grade})</span></td><td class="px-4 py-3 text-right font-mono font-bold ${t.pl>0?'text-success':(t.pl<0?'text-danger':'text-gray-400')}">$${t.pl}</td><td class="px-4 py-3 text-center">${t.screenshot?'<i class="fa-solid fa-image text-accent"></i>':'-'}</td><td class="px-4 py-3 truncate max-w-[100px] text-xs text-gray-400">${t.confirmations.substring(0,25)}...</td>`;
                 tbody.appendChild(row);
             });
         }
 
         function renderGrades() {
-            const stats = {};
-            trades.forEach(t => {
-                const g = t.grade || "N/A";
-                if(!stats[g]) stats[g] = {count:0, wins:0, pl:0};
-                stats[g].count++; stats[g].pl += t.pl; if(t.pl>0) stats[g].wins++;
-            });
-            document.getElementById('grade-table-body').innerHTML = Object.keys(stats).sort().map(g => {
-                const s = stats[g];
-                return `<tr class="border-b border-gray-700"><td class="py-2 font-bold text-white">${g}</td><td class="py-2 text-right ${s.pl>0?'text-success':'text-danger'}">$${s.pl.toFixed(0)}</td><td class="py-2 text-right">${((s.wins/s.count)*100).toFixed(0)}%</td></tr>`
-            }).join('');
+            const stats = {}; trades.forEach(t => { const g=t.grade||"N/A"; if(!stats[g]) stats[g]={c:0,w:0,p:0}; stats[g].c++; stats[g].p+=t.pl; if(t.pl>0) stats[g].w++; });
+            document.getElementById('grade-table-body').innerHTML = Object.keys(stats).sort().map(g => `<tr class="border-b border-gray-700"><td class="py-2 font-bold text-white">${g}</td><td class="py-2 text-right ${stats[g].p>0?'text-success':'text-danger'}">$${stats[g].p.toFixed(0)}</td><td class="py-2 text-right">${((stats[g].w/stats[g].c)*100).toFixed(0)}%</td></tr>`).join('');
         }
 
-        // --- MONTE CARLO TIME BASED ---
         function runMonteCarlo() {
+            // Same robust time-based logic as before
             const riskPercent = parseFloat(document.getElementById('riskSlider').value);
-            const startBal = 50000;
-            const riskAmount = startBal * (riskPercent / 100);
+            const startBal = 50000, riskAmount = startBal * (riskPercent / 100);
             document.getElementById('riskDisplayPercent').innerText = riskPercent.toFixed(2) + "%";
             document.getElementById('riskDisplayValue').innerText = "$" + riskAmount.toFixed(0);
 
-            const wins = trades.filter(t=>t.pl>0).length;
-            const losses = trades.filter(t=>t.pl<0).length;
+            const wins = trades.filter(t=>t.pl>0).length, losses = trades.filter(t=>t.pl<0).length;
             if((wins+losses) === 0) return;
-
             const winRate = wins / (wins+losses);
             const avgWin = trades.filter(t=>t.pl>0).reduce((a,b)=>a+b.pl,0)/wins || 0;
             const avgLoss = Math.abs(trades.filter(t=>t.pl<0).reduce((a,b)=>a+b.pl,0)/losses) || 0;
@@ -2096,52 +2017,33 @@ targeting m15 fvg+",A,NO,NO,YES,,,`;
             let results = [], allCurves = [];
 
             for(let i=0; i<SIMS; i++) {
-                let balance = startBal, hwm = startBal, active = true, passed = false;
-                let tradingDays = 0, totalDays = 0, curve = [startBal];
-                
-                while(active && tradingDays < 60) {
-                    tradingDays++; totalDays++;
-                    if(tradingDays % 5 === 0) totalDays += 2;
-
-                    let dailyPL = 0;
-                    let tradesToday = Math.floor(Math.random() * 3) + 1;
+                let balance = startBal, hwm = startBal, active = true, passed = false, days = 0, totalDays = 0, curve = [startBal];
+                while(active && days < 60) {
+                    days++; totalDays++; if(days % 5 === 0) totalDays += 2;
+                    let dailyPL = 0, tradesToday = Math.floor(Math.random() * 3) + 1;
                     for(let t=0; t<tradesToday; t++) {
                         let isWin = Math.random() < winRate;
-                        let pnl = isWin ? (riskAmount * (avgWin/avgLoss)) : -riskAmount;
-                        dailyPL += pnl;
+                        dailyPL += isWin ? (riskAmount * (avgWin/avgLoss)) : -riskAmount;
                     }
                     if(dailyPL <= -MAX_DAILY_LOSS) { active = false; break; }
                     if(dailyPL > CAP) dailyPL = CAP;
-
-                    balance += dailyPL;
-                    if(balance > hwm) hwm = balance;
+                    balance += dailyPL; if(balance > hwm) hwm = balance;
                     if(balance < hwm - MAX_DD) active = false;
-                    curve.push(balance);
-                    if(balance >= TARGET) { passed = true; active = false; }
+                    curve.push(balance); if(balance >= TARGET) { passed = true; active = false; }
                 }
                 results.push({ passed, totalDays, finalBalance: balance });
                 if(i < 100) allCurves.push(curve);
             }
-
             const passedRuns = results.filter(r => r.passed);
-            const passRate = (passedRuns.length / SIMS) * 100;
-            document.getElementById('sim-pass-rate').innerText = passRate.toFixed(1) + "%";
-            document.getElementById('sim-pass-rate').className = `text-2xl font-bold ${passRate>50?'text-success':'text-danger'}`;
-
             passedRuns.sort((a,b) => a.totalDays - b.totalDays);
+            document.getElementById('sim-pass-rate').innerText = ((passedRuns.length/SIMS)*100).toFixed(1) + "%";
             
-            let bestTime="--", medTime="--", worstTime="--", avgTime="--";
             if (passedRuns.length > 0) {
-                bestTime = passedRuns[0].totalDays + "d";
-                worstTime = passedRuns[passedRuns.length - 1].totalDays + "d";
-                medTime = passedRuns[Math.floor(passedRuns.length / 2)].totalDays + "d";
-                avgTime = (passedRuns.reduce((a,b)=>a+b.totalDays,0)/passedRuns.length).toFixed(1) + "d";
+                document.getElementById('scen-best-time').innerText = passedRuns[0].totalDays + "d";
+                document.getElementById('scen-worst-time').innerText = passedRuns[passedRuns.length - 1].totalDays + "d";
+                document.getElementById('scen-med-time').innerText = passedRuns[Math.floor(passedRuns.length / 2)].totalDays + "d";
+                document.getElementById('scen-avg-time').innerText = (passedRuns.reduce((a,b)=>a+b.totalDays,0)/passedRuns.length).toFixed(1) + "d";
             }
-
-            document.getElementById('scen-best-time').innerText = bestTime;
-            document.getElementById('scen-med-time').innerText = medTime;
-            document.getElementById('scen-avg-time').innerText = avgTime;
-            document.getElementById('scen-worst-time').innerText = worstTime;
 
             if(monteCarloChart) monteCarloChart.destroy();
             monteCarloChart = new Chart(document.getElementById('monteCarloChart'), {
